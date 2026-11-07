@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organizador de Cargas – Fila de Prioridade</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo" id="brand-logo">
+          <span>🚚</span>
+        </div>
+        <div class="brand-text">
+          <h1>Organizador de Cargas</h1>
+          <p>Controle e priorização de saída de cargas</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <input id="responsavel" class="input-responsavel" type="text" placeholder="Responsável pela emissão" title="Responsável pela emissão do relatório">
+        <button id="btn-imprimir-top" class="btn btn-print">🖨 IMPRIMIR FILA DE PRIORIDADE</button>
+        <button id="btn-logo" class="btn btn-light" title="Inserir logotipo da empresa">Logo</button>
+        <input id="logo-input" type="file" accept="image/*" style="display:none">
+        <button id="btn-nova-carga" class="btn btn-light">＋ Nova Carga</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="fila">Fila de Prioridade</button>
+      <button class="tab" data-tab="gerenciar">Gerenciar Romaneios</button>
+      <button class="tab" data-tab="historico">Histórico de Despachados</button>
+    </nav>
+
+    <main class="content">
+      <section id="section-fila" class="tab-panel active">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value" id="stat-fila">0</span>
+            <span class="stat-label">Cargas na Fila</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-primaria">–</span>
+            <span class="stat-label">Prioridade #1</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-despachadas">0</span>
+            <span class="stat-label">Despachadas</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-total">0</span>
+            <span class="stat-label">Total Cadastradas</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Fila de Prioridade de Saída</h2>
+            <button id="btn-imprimir-fila" class="btn btn-primary">🖨 Imprimir Fila de Prioridade</button>
+          </div>
+          <p class="panel-subtitle">Ordenação automática por data do pedido (mais antiga primeiro). Despachadas saem da fila ativa.</p>
+          <div class="table-wrapper">
+            <table class="table fila-table">
+              <thead>
+                <tr>
+                  <th>Posição</th>
+                  <th>Nº Romaneio</th>
+                  <th>Data do Pedido</th>
+                  <th>Observações</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="fila-tbody"></tbody>
+            </table>
+            <div id="fila-vazio" class="empty-state">Nenhuma carga ativa na fila de prioridades.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="section-gerenciar" class="tab-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Romaneiros Cadastrados</h2>
+            <button id="btn-nova-carga-2" class="btn btn-primary">＋ Nova Carga</button>
+          </div>
+          <div class="filters">
+            <input id="filtro-numero" type="text" placeholder="Nº Romaneio">
+            <input id="filtro-data-inicio" type="date" title="Data do pedido (início)">
+            <input id="filtro-data-fim" type="date" title="Data do pedido (fim)">
+            <select id="filtro-status" title="Status">
+              <option value="">Todos os status</option>
+              <option value="Montada">Montada</option>
+              <option value="Aguardando Expedição">Aguardando Expedição</option>
+              <option value="Liberada">Liberada</option>
+              <option value="Despachada">Despachada</option>
+            </select>
+            <input id="filtro-periodo" type="month" title="Período (mês/ano)">
+            <button id="btn-limpar-filtros" class="btn btn-ghost">Limpar filtros</button>
+          </div>
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Nº Romaneio</th>
+                  <th>Data do Pedido</th>
+                  <th>Observações</th>
+                  <th>Status</th>
+                  <th>Data de Despacho</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="gerenciar-tbody"></tbody>
+            </table>
+            <div id="gerenciar-vazio" class="empty-state">Nenhum romaneio encontrado.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="section-historico" class="tab-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Romaneios Despachados</h2>
+          </div>
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Nº Romaneio</th>
+                  <th>Data do Pedido</th>
+                  <th>Data de Despacho</th>
+                  <th>Observações</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="despachados-tbody"></tbody>
+            </table>
+            <div id="despachados-vazio" class="empty-state">Nenhum romaneio despachado até o momento.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Histórico de Alterações</h2>
+          </div>
+          <ul id="timeline" class="timeline"></ul>
+          <div id="timeline-vazio" class="empty-state">Nenhuma alteração registrada.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal-carga" class="modal-overlay">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="modal-titulo">Nova Carga</h3>
+        <button class="modal-close" id="btn-fechar-modal" title="Fechar">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modal-id-carga" value="">
+        <label for="campo-romaneio">Número do Romaneio *</label>
+        <input id="campo-romaneio" type="text" placeholder="Ex.: 8521">
+        <label for="campo-dataPedido">Data do Pedido *</label>
+        <input id="campo-dataPedido" type="date">
+        <label for="campo-status">Status</label>
+        <select id="campo-status"></select>
+        <label for="campo-observacoes">Observações</label>
+        <textarea id="campo-observacoes" rows="3" placeholder="Observações da carga"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-cancelar">Cancelar</button>
+        <button class="btn btn-primary" id="btn-salvar">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-historico" class="modal-overlay">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3>Histórico da Carga</h3>
+        <button class="modal-close" id="btn-fechar-modal-hist" title="Fechar">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-subtitle">Alterações registradas para este romaneio.</p>
+        <ul id="historico-modal-list" class="historico-modal-list"></ul>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-fechar-modal-hist-2">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <div id="print-report" class="print-report">
+    <header class="report-header">
+      <div class="report-logo">
+        <img id="report-logo" src="" alt="Logotipo">
+      </div>
+      <h1>RELATÓRIO DE PRIORIZAÇÃO DE CARGAS</h1>
+      <div class="report-meta">
+        <div>Data e horário da emissão: <span id="report-datahora"></span></div>
+        <div>Responsável pela emissão: <span id="report-responsavel"></span></div>
+      </div>
+    </header>
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th>Posição de Saída</th>
+          <th>Nº Romaneio</th>
+          <th>Data do Pedido</th>
+          <th>Observações</th>
+          <th>Status Atual</th>
+        </tr>
+      </thead>
+      <tbody id="report-corpo"></tbody>
+    </table>
+    <div class="report-footer">
+      <div class="report-assinaturas">
+        <div>Responsável pela Expedição: ______________________</div>
+        <div>Gerente: ______________________</div>
+      </div>
+      <div class="report-obs">Observações: ______________________________________________________</div>
+      <p class="report-msg">Os romaneios estão organizados conforme a antiguidade dos pedidos registrados no sistema.</p>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/report.js"></script>
+</body>
+</html>

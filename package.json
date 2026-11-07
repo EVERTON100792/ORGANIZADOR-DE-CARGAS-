@@ -1,0 +1,12 @@
+{
+  "name": "organizador-cargas",
+  "version": "1.0.0",
+  "description": "Sistema de controle, organização e priorização de cargas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
