@@ -9,6 +9,8 @@ const state = {
   est: { total: 0, ativas: 0, despachadas: 0 },
 };
 
+let confirmacaoResolver = null;
+
 function badgeStatus(s) {
   const key = String(s || '')
     .normalize('NFD')
@@ -415,10 +417,37 @@ async function abrirModalHistorico(id) {
   document.getElementById('modal-historico').classList.add('open');
 }
 
+// ------------------------------ Confirmação ------------------------------
+
+function abrirConfirmacao(mensagem) {
+  const modal = document.getElementById('modal-confirmacao');
+  document.getElementById('confirmacao-mensagem').textContent = mensagem;
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.getElementById('btn-cancelar-confirmacao').focus();
+  return new Promise((resolve) => {
+    confirmacaoResolver = resolve;
+  });
+}
+
+function fecharConfirmacao(resultado) {
+  const modal = document.getElementById('modal-confirmacao');
+  if (!modal.classList.contains('open')) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  const resolver = confirmacaoResolver;
+  confirmacaoResolver = null;
+  if (resolver) resolver(resultado);
+}
+
 // ------------------------------ Ações ------------------------------
 
-async function excluirCarga(id) {
-  if (!confirm('Deseja realmente excluir este romaneio?')) return;
+async function excluirCarga(id, numero) {
+  const mensagem = numero
+    ? `O romaneio ${numero} será excluído permanentemente do sistema.`
+    : 'Deseja realmente excluir este romaneio?';
+  const confirmado = await abrirConfirmacao(mensagem);
+  if (!confirmado) return;
   try {
     await api('/api/cargas/' + id, 'DELETE');
     toast('Romaneio excluído com sucesso!', 'ok');
@@ -588,6 +617,18 @@ document.getElementById('modal-historico').addEventListener('click', (e) => {
   if (e.target === document.getElementById('modal-historico')) document.getElementById('modal-historico').classList.remove('open');
 });
 
+document.getElementById('btn-fechar-confirmacao').addEventListener('click', () => fecharConfirmacao(false));
+document.getElementById('btn-cancelar-confirmacao').addEventListener('click', () => fecharConfirmacao(false));
+document.getElementById('btn-confirmar-exclusao').addEventListener('click', () => fecharConfirmacao(true));
+document.getElementById('modal-confirmacao').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal-confirmacao')) fecharConfirmacao(false);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('modal-confirmacao').classList.contains('open')) {
+    fecharConfirmacao(false);
+  }
+});
+
 document.getElementById('btn-imprimir-top').addEventListener('click', abrirRelatorio);
 document.getElementById('btn-imprimir-fila').addEventListener('click', abrirRelatorio);
 document.getElementById('btn-imprimir-selecionadas').addEventListener('click', abrirRelatorioSelecionadas);
@@ -624,12 +665,13 @@ document.getElementById('fila-tbody').addEventListener('click', async (e) => {
   const btn = e.target.closest('.btn-acao');
   if (!btn) return;
   const id = Number(btn.dataset.id);
+  const numero = btn.closest('tr')?.querySelector('td strong')?.textContent.trim() || '';
   try {
     if (btn.dataset.acao === 'editar') {
       const carga = await api('/api/cargas/' + id);
       abrirModalEditar(carga);
     }
-    if (btn.dataset.acao === 'excluir') await excluirCarga(id);
+    if (btn.dataset.acao === 'excluir') await excluirCarga(id, numero);
   } catch (err) {
     toast(err.message, 'erro');
   }
@@ -640,12 +682,13 @@ document.getElementById('gerenciar-tbody').addEventListener('click', async (e) =
   if (!btn) return;
   const id = Number(btn.dataset.id);
   const acao = btn.dataset.acao;
+  const numero = btn.closest('tr')?.querySelector('td strong')?.textContent.trim() || '';
   try {
     if (acao === 'editar') {
       const carga = await api('/api/cargas/' + id);
       abrirModalEditar(carga);
     }
-    if (acao === 'excluir') await excluirCarga(id);
+    if (acao === 'excluir') await excluirCarga(id, numero);
   } catch (err) {
     toast(err.message, 'erro');
   }

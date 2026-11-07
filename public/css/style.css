@@ -187,6 +187,14 @@ body {
 .btn-ghost { background: #ffffff; color: #42526b; border: 1px solid var(--border); }
 .btn-ghost:hover { background: #fbfcff; border-color: #c8d3e2; color: var(--navy-800); }
 
+.btn-danger {
+  background: linear-gradient(135deg, #d93a2e 0%, #a91d13 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 22px rgba(169, 29, 19, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.btn-danger:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(169, 29, 19, 0.40); }
+
 .btn-print {
   background: rgba(212, 175, 55, 0.12);
   color: #f0d97a;
@@ -538,6 +546,49 @@ body {
 
 .modal-subtitle { font-size: 13px; color: var(--text-muted); margin: 0 0 10px; }
 
+/* ------------------------------ Confirmação de exclusão ------------------------------ */
+.modal-confirm { max-width: 450px; }
+
+.modal-body-confirm {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 22px;
+}
+
+.confirm-icon {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b42318;
+  background: radial-gradient(circle at 32% 24%, #ffffff 0%, #fdecea 72%);
+  border: 1px solid #f3c9c4;
+  box-shadow: 0 0 0 6px rgba(180, 35, 24, 0.05), inset 0 1px 0 #ffffff;
+}
+
+.confirm-icon svg { width: 26px; height: 26px; }
+
+.confirm-text { flex: 1; min-width: 0; }
+.confirm-text p { margin: 0; }
+
+#confirmacao-mensagem {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--navy-800);
+  line-height: 1.5;
+}
+
+.confirm-hint {
+  margin-top: 7px !important;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
 .historico-modal-list { list-style: none; margin: 0; padding: 0; max-height: 52vh; overflow-y: auto; }
 .historico-modal-list li { position: relative; padding: 0 0 14px 24px; border-left: 2px solid #e3e9f1; margin-left: 7px; }
 .historico-modal-list li:last-child { border-left-color: transparent; padding-bottom: 0; }
@@ -700,6 +751,9 @@ button:focus-visible, .tab:focus-visible {
 
 @media (max-width: 420px) {
   .stats-grid { grid-template-columns: 1fr; }
+  .modal-body-confirm { padding: 20px 18px; gap: 12px; }
+  .confirm-icon { width: 46px; height: 46px; }
+  .confirm-icon svg { width: 22px; height: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
