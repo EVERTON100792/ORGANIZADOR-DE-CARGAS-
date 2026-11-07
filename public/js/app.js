@@ -1,11 +1,11 @@
-const STATUS_LIST = ['Montada', 'Aguardando Expedição', 'Liberada', 'Despachada'];
+const STATUS_LIST = ['A contratar', 'Despachada'];
 const TIPOS_VEICULO = ['Van', 'Fiorino', 'Três Quartos', 'Toco'];
 
 const state = {
   fila: [],
   despachados: [],
   historico: [],
-  est: { total: 0, ativas: 0, despachadas: 0, liberadas: 0 },
+  est: { total: 0, ativas: 0, despachadas: 0 },
 };
 
 function badgeStatus(s) {
@@ -132,7 +132,7 @@ function renderFila() {
 
     const tdStatus = document.createElement('td');
     const badge = document.createElement('span');
-    badge.className = badgeStatus(f.status);
+    badge.className = 'status-badge ' + badgeStatus(f.status);
     badge.textContent = f.status;
     tdStatus.appendChild(badge);
 
@@ -266,7 +266,7 @@ function renderDespachados() {
 
     const tdStatus = document.createElement('td');
     const badge = document.createElement('span');
-    badge.className = badgeStatus(c.status);
+    badge.className = 'status-badge ' + badgeStatus(c.status);
     badge.textContent = c.status;
     tdStatus.appendChild(badge);
 
@@ -315,7 +315,7 @@ function abrirModalCriar() {
   document.getElementById('campo-romaneio').value = '';
   document.getElementById('campo-dataPedido').value = '';
   document.getElementById('campo-tipoVeiculo').value = '';
-  document.getElementById('campo-status').value = 'Montada';
+  document.getElementById('campo-status').value = 'A contratar';
   document.getElementById('campo-observacoes').value = '';
   document.getElementById('modal-carga').classList.add('open');
 }
@@ -482,24 +482,6 @@ async function consultarRomaneio() {
   }
 }
 
-async function enviarLogo(file) {
-  const dataUrl = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-  const res = await api('/api/logo', 'POST', { dados: dataUrl });
-  return res.url;
-}
-
-function aplicarLogo(url) {
-  if (!url) return;
-  window.__LOGO_URL = url;
-  const brandLogo = document.getElementById('brand-logo');
-  brandLogo.innerHTML = '<img src="' + url + '" alt="Logotipo">';
-}
-
 // ------------------------------ Eventos ------------------------------
 
 document.getElementById('btn-nova-carga').addEventListener('click', abrirModalCriar);
@@ -527,20 +509,6 @@ document.getElementById('form-consulta').addEventListener('submit', (e) => {
 
 document.getElementById('busca-romaneio').addEventListener('input', () => {
   document.getElementById('consulta-resultado').hidden = true;
-});
-
-document.getElementById('btn-logo').addEventListener('click', () => document.getElementById('logo-input').click());
-document.getElementById('logo-input').addEventListener('change', async (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  try {
-    const url = await enviarLogo(file);
-    aplicarLogo(url);
-    toast('Logotipo atualizado com sucesso!', 'ok');
-  } catch (err) {
-    toast(err.message, 'erro');
-  }
-  e.target.value = '';
 });
 
 document.getElementById('fila-tbody').addEventListener('click', async (e) => {
@@ -613,13 +581,6 @@ async function init() {
   document.getElementById('filtro-status').innerHTML = '<option value="">Todos os status</option>' + STATUS_LIST.map((s) => `<option value="${s}">${s}</option>`).join('');
 
   await recarregarTudo();
-
-  try {
-    const logoRes = await api('/api/logo');
-    aplicarLogo(logoRes && logoRes.url);
-  } catch (e) {
-    /* logo opcional */
-  }
 
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => {

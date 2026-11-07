@@ -10,9 +10,6 @@
   <div id="app">
     <header class="topbar">
       <div class="brand">
-        <div class="brand-logo" id="brand-logo">
-          <span>🚚</span>
-        </div>
         <div class="brand-text">
           <h1>Organizador de Cargas</h1>
           <p>Controle e priorização de saída de cargas</p>
@@ -20,8 +17,6 @@
       </div>
       <div class="topbar-actions">
         <button id="btn-imprimir-top" class="btn btn-print">🖨 IMPRIMIR FILA DE PRIORIDADE</button>
-        <button id="btn-logo" class="btn btn-light" title="Inserir logotipo da empresa">Logo</button>
-        <input id="logo-input" type="file" accept="image/*" style="display:none">
         <button id="btn-nova-carga" class="btn btn-light">＋ Nova Carga</button>
       </div>
     </header>
@@ -100,9 +95,7 @@
             <input id="filtro-data-fim" type="date" title="Data do pedido (fim)">
             <select id="filtro-status" title="Status">
               <option value="">Todos os status</option>
-              <option value="Montada">Montada</option>
-              <option value="Aguardando Expedição">Aguardando Expedição</option>
-              <option value="Liberada">Liberada</option>
+              <option value="A contratar">A contratar</option>
               <option value="Despachada">Despachada</option>
             </select>
             <input id="filtro-periodo" type="month" title="Período (mês/ano)">

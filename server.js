@@ -24,7 +24,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const REST = SUPABASE_URL + '/rest/v1';
-const STATUS_LIST = ['Montada', 'Aguardando Expedição', 'Liberada', 'Despachada'];
+const STATUS_LIST = ['A contratar', 'Despachada'];
 const TIPOS_VEICULO = ['Van', 'Fiorino', 'Três Quartos', 'Toco'];
 const TZ = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
 
@@ -441,17 +441,15 @@ app.get('/api/historico', rota(async (req, res) => {
 }));
 
 app.get('/api/estatisticas', rota(async (req, res) => {
-  const [todas, ativas, despachadas, liberadas] = await Promise.all([
+  const [todas, ativas, despachadas] = await Promise.all([
     sb('/cargas?select=id'),
     sb('/cargas?select=id&status=neq.Despachada'),
     sb('/cargas?select=id&status=eq.Despachada'),
-    sb('/cargas?select=id&status=eq.Liberada'),
   ]);
   res.json({
     total: todas.length,
     ativas: ativas.length,
     despachadas: despachadas.length,
-    liberadas: liberadas.length,
   });
 }));
 
@@ -464,22 +462,6 @@ app.put('/api/config', rota(async (req, res) => {
   const valor = String((req.body || {}).valor || '').trim();
   await salvarConfig('responsavel', valor);
   res.json({ responsavel: valor });
-}));
-
-app.get('/api/logo', rota(async (req, res) => {
-  res.json({ url: (await obterConfig('logo')) || null });
-}));
-
-app.post('/api/logo', rota(async (req, res) => {
-  const dados = String((req.body || {}).dados || '');
-  const match = /^data:image\/[a-zA-Z0-9.+-]+;base64,(.*)$/.exec(dados);
-  if (!match) return res.status(400).json({ erro: 'Imagem de logo inválida.' });
-  const buffer = Buffer.from(match[1], 'base64');
-  if (!buffer.length || buffer.length > 2 * 1024 * 1024) {
-    return res.status(400).json({ erro: 'Logo deve ter no máximo 2MB.' });
-  }
-  await salvarConfig('logo', dados);
-  res.json({ url: dados });
 }));
 
 app.get('/', (req, res) => {

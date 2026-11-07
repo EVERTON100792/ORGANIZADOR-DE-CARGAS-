@@ -32,9 +32,9 @@ SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
 
 | Tabela | Função |
 |---|---|
-| `cargas` | Romaneios cadastrados (número, data do pedido, status, observações, datas de criação/atualização/despacho) |
+| `cargas` | Romaneios cadastrados (número, data do pedido, tipo de veículo, status, observações, datas de criação/atualização/despacho) |
 | `historico` | Histórico de alterações de cada carga |
-| `config` | Configurações internas (logotipo em data URL) |
+| `config` | Configurações internas |
 | `usuarios` | Reservada para a futura gestão de usuários |
 
 O RLS está habilitado nas tabelas — o acesso anônimo é bloqueado; somente o backend com a `service_role` consegue ler e gravar.
@@ -70,7 +70,7 @@ Passos:
 ### 1. Cadastro de cargas
 - Cadastro de número do romaneio, data do pedido, tipo de veículo, observações e status.
 - Tipo de veículo: Van, Fiorino, Três Quartos ou Toco.
-- Status: Montada, Aguardando Expedição, Liberada, Despachada.
+- Status: A contratar ou Despachada.
 - Edição e exclusão de registros.
 - Alteração de status.
 - Campos de cliente, número de separação/trailer e data de montagem não fazem parte do cadastro.
@@ -82,11 +82,11 @@ Passos:
 
 ### 2.1 Consulta rápida de romaneio
 - Barra de pesquisa no topo do sistema.
-- Ao informar o número, o sistema avisa se já está cadastrado e mostra o status atual (ex.: Montada, Liberada, Despachada) ou se já foi despachado.
+- Ao informar o número, o sistema avisa se já está cadastrado e mostra o status atual (A contratar ou Despachada).
 - Se não existir, oferece o botão "Cadastrar agora" com o número já preenchido, evitando cadastros duplicados.
 
 ### 3. Painel principal – Fila de prioridade
-- Colunas: Posição, Nº Romaneio, Data do Pedido, Observações, Status.
+- Colunas: Posição, Nº Romaneio, Veículo, Data do Pedido, Observações, Status.
 - Cores: vermelho (1º), laranja (2º), amarelo (3º), verde (demais).
 - Cards de estatísticas: cargas na fila, prioridade #1, despachadas, total.
 
@@ -106,7 +106,8 @@ Passos:
 - Lista de despachadas com data de despacho e histórico de alterações.
 
 ### 8. Design
-- Corporativo, azul/branco/cinza, claro, responsivo (desktop, tablet, celular).
+- Visual corporativo premium em azul-marinho e dourado, responsivo (desktop, tablet, celular).
+- Interface sem logotipo, conforme solicitado.
 
 ## API REST
 
@@ -124,7 +125,6 @@ Passos:
 | GET | `/api/cargas/:id/historico` | Histórico de alterações |
 | GET | `/api/historico` | Histórico geral |
 | GET/PUT | `/api/config` | Configurações internas |
-| POST/GET | `/api/logo` | Upload/consulta de logotipo (salvo no Supabase) |
 
 ## Estrutura
 
