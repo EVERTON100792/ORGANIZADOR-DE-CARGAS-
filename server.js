@@ -195,12 +195,20 @@ app.get('/api/fila', rota(async (req, res) => {
   res.json(await filaAtiva());
 }));
 
+app.get('/api/verificar-romaneio', rota(async (req, res) => {
+  const numero = (req.query.numero || '').toString().trim();
+  if (!numero) return res.status(400).json({ erro: 'Informe o número do romaneio.' });
+  const lista = await sb(
+    '/cargas?select=*&numeroRomaneio=ilike.' + encodeURIComponent(numero) + '&limit=1'
+  );
+  if (!lista.length) return res.json({ encontrado: false });
+  res.json({ encontrado: true, carga: lista[0] });
+}));
+
 app.get('/api/relatorio', rota(async (req, res) => {
   const fila = await filaAtiva();
-  const responsavel = (await obterConfig('responsavel')) || 'Equipe de Expedição';
   res.json({
     fila,
-    responsavel,
     emissao: {
       dataHora: dataHoraExibicao(),
       geradoEm: agora(),

@@ -34,7 +34,7 @@ SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
 |---|---|
 | `cargas` | Romaneios cadastrados (número, data do pedido, status, observações, datas de criação/atualização/despacho) |
 | `historico` | Histórico de alterações de cada carga |
-| `config` | Configurações do sistema (responsável pela emissão e logotipo em data URL) |
+| `config` | Configurações internas (logotipo em data URL) |
 | `usuarios` | Reservada para a futura gestão de usuários |
 
 O RLS está habilitado nas tabelas — o acesso anônimo é bloqueado; somente o backend com a `service_role` consegue ler e gravar.
@@ -79,6 +79,11 @@ Passos:
 - Em caso de empate, o número do romaneio é usado como critério secundário.
 - Despachadas saem da fila ativa, mas permanecem no histórico.
 
+### 2.1 Consulta rápida de romaneio
+- Barra de pesquisa no topo do sistema.
+- Ao informar o número, o sistema avisa se já está cadastrado e mostra o status atual (ex.: Montada, Liberada, Despachada) ou se já foi despachado.
+- Se não existir, oferece o botão "Cadastrar agora" com o número já preenchido, evitando cadastros duplicados.
+
 ### 3. Painel principal – Fila de prioridade
 - Colunas: Posição, Nº Romaneio, Data do Pedido, Observações, Status.
 - Cores: vermelho (1º), laranja (2º), amarelo (3º), verde (demais).
@@ -90,7 +95,7 @@ Passos:
 
 ### 5. Impressão de relatório para gerência
 - Botão destacado "IMPRIMIR FILA DE PRIORIDADE".
-- Relatório formal sem nomes: cabeçalho com borda dupla e logotipo opcional, título, data/hora de emissão, tabela listrada da fila, destaque em negrito dos 3 primeiros e rodapé centralizado.
+- Relatório formal sem nomes e sem logotipo: cabeçalho com borda dupla, título, data/hora de emissão, tabela listrada da fila, destaque em negrito dos 3 primeiros e rodapé centralizado.
 - Versão otimizada para impressão em A4 (`@page size: A4`), sem menus/botões da interface.
 
 ### 6. Filtros e pesquisa
@@ -107,6 +112,7 @@ Passos:
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/api/fila` | Fila de prioridade ativa com posições |
+| GET | `/api/verificar-romaneio` | Consulta se um romaneio já existe e informa o status |
 | GET | `/api/relatorio` | Dados para o relatório de impressão |
 | GET | `/api/despachados` | Romaneios despachados + histórico |
 | GET | `/api/cargas` | Listagem com filtros (`numero`, `dataInicio`, `dataFim`, `status`, `periodo`) |
@@ -116,7 +122,7 @@ Passos:
 | DELETE | `/api/cargas/:id` | Excluir carga |
 | GET | `/api/cargas/:id/historico` | Histórico de alterações |
 | GET | `/api/historico` | Histórico geral |
-| GET/PUT | `/api/config` | Config (responsável pela emissão) |
+| GET/PUT | `/api/config` | Configurações internas |
 | POST/GET | `/api/logo` | Upload/consulta de logotipo (salvo no Supabase) |
 
 ## Estrutura

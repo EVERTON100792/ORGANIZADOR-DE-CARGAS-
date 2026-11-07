@@ -19,13 +19,21 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <input id="responsavel" class="input-responsavel" type="text" placeholder="Responsável pela emissão" title="Responsável pela emissão do relatório">
         <button id="btn-imprimir-top" class="btn btn-print">🖨 IMPRIMIR FILA DE PRIORIDADE</button>
         <button id="btn-logo" class="btn btn-light" title="Inserir logotipo da empresa">Logo</button>
         <input id="logo-input" type="file" accept="image/*" style="display:none">
         <button id="btn-nova-carga" class="btn btn-light">＋ Nova Carga</button>
       </div>
     </header>
+
+    <div class="consulta-bar">
+      <form id="form-consulta" class="consulta-form" autocomplete="off">
+        <label for="busca-romaneio">🔍 Consultar romaneio</label>
+        <input id="busca-romaneio" type="text" placeholder="Digite o nº do romaneio" maxlength="20">
+        <button type="submit" class="btn btn-primary">Verificar</button>
+      </form>
+      <div id="consulta-resultado" class="consulta-resultado" hidden></div>
+    </div>
 
     <nav class="tabs">
       <button class="tab active" data-tab="fila">Fila de Prioridade</button>
@@ -196,13 +204,9 @@
 
   <div id="print-report" class="print-report">
     <header class="report-header">
-      <div class="report-logo">
-        <img id="report-logo" src="" alt="Logotipo">
-      </div>
       <h1>RELATÓRIO DE PRIORIZAÇÃO DE CARGAS</h1>
       <div class="report-meta">
         <div>Data e horário da emissão: <span id="report-datahora"></span></div>
-        <div>Responsável pela emissão: <span id="report-responsavel"></span></div>
       </div>
     </header>
     <table class="report-table">

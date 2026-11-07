@@ -1,21 +1,9 @@
 window.Relatorio = {
   render(dados) {
     const datahoraEl = document.getElementById('report-datahora');
-    const responsavelEl = document.getElementById('report-responsavel');
-    const logoEl = document.getElementById('report-logo');
     const tbody = document.getElementById('report-corpo');
 
     if (datahoraEl) datahoraEl.textContent = (dados && dados.emissao && dados.emissao.dataHora) || '';
-    if (responsavelEl) responsavelEl.textContent = (dados && dados.responsavel) || '';
-
-    if (logoEl) {
-      if (window.__LOGO_URL) {
-        logoEl.src = window.__LOGO_URL;
-        logoEl.style.display = 'block';
-      } else {
-        logoEl.style.display = 'none';
-      }
-    }
 
     tbody.innerHTML = '';
     (dados && dados.fila ? dados.fila : []).forEach((f) => {

@@ -68,18 +68,54 @@ body {
 
 .topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-.input-responsavel {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: #fff;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
-  width: 220px;
+/* ------------------------------ Consulta rápida ------------------------------ */
+.consulta-bar {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.input-responsavel::placeholder { color: #b9cfe8; }
-.input-responsavel:focus { outline: none; background: rgba(255, 255, 255, 0.2); }
+.consulta-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.consulta-form label { font-size: 13px; font-weight: 700; color: var(--blue-900); }
+
+.consulta-form input {
+  width: 230px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--text);
+  background: #fff;
+}
+
+.consulta-form input:focus { outline: 2px solid rgba(26, 99, 180, 0.22); border-color: var(--blue-600); }
+
+.consulta-resultado {
+  flex: 1;
+  min-width: 280px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.consulta-resultado[hidden] { display: none; }
+.consulta-resultado.livre { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.consulta-resultado.cadastrada { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.consulta-resultado.despachada { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.consulta-resultado.aviso { background: #eff6ff; color: var(--blue-700); border-color: #bfdbfe; }
+.consulta-resultado.erro { background: #fef2f2; color: var(--red); border-color: #fecaca; }
+
+.btn-pequeno { padding: 5px 10px; font-size: 12px; }
 
 /* ------------------------------ Buttons ------------------------------ */
 .btn {
@@ -349,8 +385,6 @@ body {
 }
 
 .report-header { text-align: center; border-top: 3px solid #0b2f57; border-bottom: 3px solid #0b2f57; padding: 14px 0; margin-bottom: 16px; }
-.report-logo { height: 64px; margin-bottom: 6px; }
-.report-logo img { max-height: 64px; max-width: 220px; object-fit: contain; }
 .report-header h1 { margin: 0 0 8px; font-size: 20px; letter-spacing: 1.5px; color: #0b2f57; }
 .report-meta { display: flex; justify-content: center; gap: 60px; flex-wrap: wrap; font-size: 12px; color: #334155; }
 .report-meta div { display: flex; flex-direction: column; }
@@ -375,4 +409,8 @@ body {
   .brand-text h1 { font-size: 18px; }
   .tabs { padding: 0 10px; }
   .filters input[type="date"], .filters input[type="month"] { min-width: 130px; }
+  .consulta-bar { padding: 10px 14px; }
+  .consulta-form { width: 100%; }
+  .consulta-form input { flex: 1; min-width: 140px; }
+  .consulta-resultado { min-width: 100%; }
 }

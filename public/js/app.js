@@ -4,7 +4,6 @@ const state = {
   fila: [],
   despachados: [],
   historico: [],
-  config: { responsavel: 'Equipe de Expedição' },
   est: { total: 0, ativas: 0, despachadas: 0, liberadas: 0 },
 };
 
@@ -68,19 +67,16 @@ function toast(msg, tipo) {
 }
 
 async function carregarTudo() {
-  const [filaRes, despRes, histRes, cfgRes, estRes] = await Promise.all([
+  const [filaRes, despRes, histRes, estRes] = await Promise.all([
     api('/api/fila'),
     api('/api/despachados'),
     api('/api/historico?limit=60'),
-    api('/api/config'),
     api('/api/estatisticas'),
   ]);
   state.fila = filaRes;
   state.despachados = despRes;
   state.historico = histRes;
-  state.config = cfgRes;
   state.est = estRes;
-  document.getElementById('responsavel').value = state.config.responsavel || '';
   return estRes;
 }
 
@@ -418,6 +414,55 @@ async function abrirRelatorio() {
   }
 }
 
+// ------------------------------ Consulta rápida ------------------------------
+
+async function consultarRomaneio() {
+  const input = document.getElementById('busca-romaneio');
+  const box = document.getElementById('consulta-resultado');
+  const numero = input.value.trim();
+
+  box.hidden = false;
+  if (!numero) {
+    box.className = 'consulta-resultado aviso';
+    box.textContent = 'Digite o número do romaneio para verificar.';
+    input.focus();
+    return;
+  }
+
+  try {
+    const dados = await api('/api/verificar-romaneio?numero=' + encodeURIComponent(numero));
+
+    if (!dados.encontrado) {
+      box.className = 'consulta-resultado livre';
+      box.innerHTML = '';
+      const texto = document.createElement('span');
+      texto.textContent = `Romaneio ${numero} não está cadastrado. Você pode cadastrá-lo.`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-primary btn-pequeno';
+      btn.textContent = 'Cadastrar agora';
+      btn.addEventListener('click', () => {
+        abrirModalCriar();
+        document.getElementById('campo-romaneio').value = numero;
+        document.getElementById('campo-romaneio').focus();
+      });
+      box.append(texto, btn);
+      return;
+    }
+
+    const carga = dados.carga;
+    const despachada = String(carga.status) === 'Despachada';
+    box.className = 'consulta-resultado ' + (despachada ? 'despachada' : 'cadastrada');
+    const dataDespacho = carga.dataDespacho ? ` em ${formatarData(carga.dataDespacho)}` : '';
+    box.textContent = despachada
+      ? `Romaneio ${carga.numeroRomaneio} já foi DESPACHADO${dataDespacho}. Não é necessário cadastrar novamente.`
+      : `Romaneio ${carga.numeroRomaneio} já está cadastrado com status "${carga.status}". Não é necessário cadastrar novamente.`;
+  } catch (e) {
+    box.className = 'consulta-resultado erro';
+    box.textContent = e.message;
+  }
+}
+
 async function enviarLogo(file) {
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -434,8 +479,6 @@ function aplicarLogo(url) {
   window.__LOGO_URL = url;
   const brandLogo = document.getElementById('brand-logo');
   brandLogo.innerHTML = '<img src="' + url + '" alt="Logotipo">';
-  const reportLogo = document.getElementById('report-logo');
-  reportLogo.src = url;
 }
 
 // ------------------------------ Eventos ------------------------------
@@ -457,6 +500,15 @@ document.getElementById('modal-historico').addEventListener('click', (e) => {
 
 document.getElementById('btn-imprimir-top').addEventListener('click', abrirRelatorio);
 document.getElementById('btn-imprimir-fila').addEventListener('click', abrirRelatorio);
+
+document.getElementById('form-consulta').addEventListener('submit', (e) => {
+  e.preventDefault();
+  consultarRomaneio();
+});
+
+document.getElementById('busca-romaneio').addEventListener('input', () => {
+  document.getElementById('consulta-resultado').hidden = true;
+});
 
 document.getElementById('btn-logo').addEventListener('click', () => document.getElementById('logo-input').click());
 document.getElementById('logo-input').addEventListener('change', async (e) => {
@@ -546,15 +598,6 @@ async function init() {
   } catch (e) {
     /* logo opcional */
   }
-
-  document.getElementById('responsavel').addEventListener('change', async (e) => {
-    try {
-      await api('/api/config', 'PUT', { valor: e.target.value });
-      state.config.responsavel = e.target.value;
-    } catch (err) {
-      toast(err.message, 'erro');
-    }
-  });
 
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => {
