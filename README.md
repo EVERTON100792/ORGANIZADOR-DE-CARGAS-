@@ -48,11 +48,11 @@ Há duas formas:
 
 ## Deploy na Vercel
 
-O projeto já está preparado para a Vercel:
+O projeto usa o modo **Express zero-config** da Vercel:
 
-- `api/[...path].js` — função serverless que executa o backend Express em todas as rotas `/api/*`.
-- `vercel.json` — publica os arquivos estáticos de `public/` e define a duração máxima da função.
-- `server.js` — exporta o app Express e só inicia o `listen` quando executado localmente (`npm start`).
+- `server.js` — entrypoint do backend; exporta o app Express e só inicia o `listen` quando executado localmente (`npm start`).
+- `public/` — arquivos estáticos servidos automaticamente pela CDN da Vercel.
+- Não é necessário configurar Build Command, Output Directory nem função serverless separada.
 
 Passos:
 
@@ -60,9 +60,12 @@ Passos:
 2. Em **Environment Variables**, adicione (para Production, Preview e Development):
    - `SUPABASE_URL` = `https://jpafrighyyhfyvveqipm.supabase.co`
    - `SUPABASE_SERVICE_ROLE_KEY` = sua chave service_role
-3. Clique em **Deploy**. Não é necessário build; a Vercel detecta a pasta `api/` e os estáticos em `public/`.
-4. O sistema ficará disponível em `https://<nome-do-projeto>.vercel.app`.
+3. Em **Settings → Build & Development Settings**, deixe **Output Directory** vazio e não informe Build Command.
+4. Clique em **Deploy**. A Vercel detecta o Express em `server.js` automaticamente e publica os estáticos de `public/`.
+5. O sistema ficará disponível em `https://<nome-do-projeto>.vercel.app`.
 
+> Se o projeto já foi criado com **Output Directory = public**, apague esse valor nas configurações e faça um novo deploy. Caso contrário o build falha com `No entrypoint found in output directory: "public"`.
+>
 > Sempre que alterar variáveis de ambiente na Vercel, faça um novo deploy para aplicá-las. A chave `service_role` fica somente no servidor (variável de ambiente), nunca no navegador.
 
 ## Funcionalidades
@@ -83,6 +86,7 @@ Passos:
 ### 2.1 Consulta rápida de romaneio
 - Barra de pesquisa no topo do sistema.
 - Ao informar o número, o sistema avisa se já está cadastrado e mostra o status atual (A contratar ou Despachada).
+- Se o romaneio estiver ativo na fila, o sistema troca para a aba **Fila de Prioridade**, rola até a linha e a destaca temporariamente em dourado.
 - Se não existir, oferece o botão "Cadastrar agora" com o número já preenchido, evitando cadastros duplicados.
 
 ### 2.2 Sequência de montagem para expedição
@@ -137,8 +141,6 @@ Passos:
 
 ```
 server.js                  # API REST + servidor + cliente Supabase (exporta o app)
-api/[...path].js           # Função serverless da Vercel (/api/*)
-vercel.json                # Configuração de deploy (estáticos + função)
 public/index.html          # Interface
 public/css/style.css       # Estilos (incl. versão de impressão)
 public/js/app.js           # Lógica da interface

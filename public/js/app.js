@@ -10,6 +10,7 @@ const state = {
 };
 
 let confirmacaoResolver = null;
+let destaqueTimer = null;
 
 function badgeStatus(s) {
   const key = String(s || '')
@@ -168,6 +169,8 @@ function renderFila() {
 
     const tr = document.createElement('tr');
     tr.className = classeLinha + (selecionada ? ' row-selecionada' : '');
+    tr.dataset.id = idStr;
+    tr.dataset.numeroRomaneio = f.numeroRomaneio;
     tr.append(tdCheck, tdPos, tdNum, tdVeiculo, tdData, tdObs, tdStatus, tdAcoes);
     tbody.appendChild(tr);
   });
@@ -552,6 +555,71 @@ async function abrirRelatorioSelecionadas() {
 
 // ------------------------------ Consulta rápida ------------------------------
 
+function ativarAba(nome) {
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.tab === nome);
+  });
+  document.querySelectorAll('.tab-panel').forEach((painel) => {
+    painel.classList.toggle('active', painel.id === 'section-' + nome);
+  });
+}
+
+async function destacarCargaNaFila(carga) {
+  const id = String(carga.id);
+  const numero = String(carga.numeroRomaneio || '').trim().toLowerCase();
+
+  const localizar = () =>
+    state.fila.findIndex(
+      (f) => String(f.id) === id || (numero && String(f.numeroRomaneio || '').trim().toLowerCase() === numero)
+    );
+
+  let indice = localizar();
+
+  // Se a fila estiver desatualizada, recarrega antes de desistir do destaque.
+  if (indice === -1) {
+    try {
+      state.fila = await api('/api/fila');
+      renderFila();
+      indice = localizar();
+    } catch (e) {
+      /* mantém o aviso da consulta */
+    }
+  }
+
+  if (indice === -1) return null;
+
+  ativarAba('fila');
+
+  const alvo = state.fila[indice];
+  const idAlvo = String(alvo.id);
+  const linha = Array.from(document.querySelectorAll('#fila-tbody tr')).find(
+    (tr) => tr.dataset.id === idAlvo
+  );
+  if (!linha) return null;
+
+  if (destaqueTimer) {
+    clearTimeout(destaqueTimer);
+    destaqueTimer = null;
+  }
+  document.querySelectorAll('#fila-tbody tr.row-destacada').forEach((tr) => {
+    tr.classList.remove('row-destacada');
+  });
+
+  // Reinicia a animação mesmo em buscas repetidas.
+  void linha.offsetWidth;
+  linha.classList.add('row-destacada');
+
+  const reduzirMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  linha.scrollIntoView({ behavior: reduzirMovimento ? 'auto' : 'smooth', block: 'center' });
+
+  destaqueTimer = setTimeout(() => {
+    linha.classList.remove('row-destacada');
+    destaqueTimer = null;
+  }, 10000);
+
+  return alvo.posicao;
+}
+
 async function consultarRomaneio() {
   const input = document.getElementById('busca-romaneio');
   const box = document.getElementById('consulta-resultado');
@@ -591,9 +659,18 @@ async function consultarRomaneio() {
     box.className = 'consulta-resultado ' + (despachada ? 'despachada' : 'cadastrada');
     const dataDespacho = carga.dataDespacho ? ` em ${formatarData(carga.dataDespacho)}` : '';
     const veiculo = carga.tipoVeiculo ? ` (Veículo: ${carga.tipoVeiculo})` : '';
-    box.textContent = despachada
-      ? `Romaneio ${carga.numeroRomaneio} já foi DESPACHADO${dataDespacho}${veiculo}. Não é necessário cadastrar novamente.`
-      : `Romaneio ${carga.numeroRomaneio} já está cadastrado com status "${carga.status}"${veiculo}. Não é necessário cadastrar novamente.`;
+
+    if (despachada) {
+      box.textContent = `Romaneio ${carga.numeroRomaneio} já foi DESPACHADO${dataDespacho}${veiculo}. Não é necessário cadastrar novamente.`;
+      return;
+    }
+
+    box.textContent = `Romaneio ${carga.numeroRomaneio} está cadastrado com status "${carga.status}"${veiculo}. Não é necessário cadastrar novamente.`;
+
+    const posicao = await destacarCargaNaFila(carga);
+    if (posicao) {
+      box.textContent = `Romaneio ${carga.numeroRomaneio} está na ${posicao}ª posição da fila de prioridade${veiculo}. Destaque aplicado na lista.`;
+    }
   } catch (e) {
     box.className = 'consulta-resultado erro';
     box.textContent = e.message;
@@ -735,13 +812,7 @@ async function init() {
   await recarregarTudo();
 
   document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-      tab.classList.add('active');
-      document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
-      const panel = document.getElementById('section-' + tab.dataset.tab);
-      if (panel) panel.classList.add('active');
-    });
+    tab.addEventListener('click', () => ativarAba(tab.dataset.tab));
   });
 }
 
