@@ -198,13 +198,18 @@ async function salvarConfig(chave, valor) {
 const rota = (fn) => (req, res) => {
   Promise.resolve(fn(req, res)).catch((err) => {
     console.error('[API]', err.message);
-    res.status(500).json({ erro: 'Erro interno do servidor. Verifique a conexão com o banco de dados.' });
+    res.status(err.status || 500).json({
+      erro: err.message || 'Erro interno do servidor. Verifique a conexão com o banco de dados.'
+    });
   });
 };
 
 // ---------------------------------------------------------------- Rotas
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/health', (req, res) => res.json({
+  ok: true,
+  supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_KEY)
+}));
 
 app.get('/api/fila', rota(async (req, res) => {
   res.json(await filaAtiva());
