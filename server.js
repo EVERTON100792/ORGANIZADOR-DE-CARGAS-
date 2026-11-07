@@ -13,8 +13,10 @@ const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('ERRO: configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no arquivo .env');
-  process.exit(1);
+  console.error('AVISO: configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no arquivo .env ou nas variáveis da Vercel');
+  if (require.main === module) {
+    process.exit(1);
+  }
 }
 
 const app = express();
@@ -31,6 +33,11 @@ const TZ = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
 // ---------------------------------------------------------------- Cliente Supabase
 
 async function sb(caminho, opcoes = {}) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    const erro = new Error('Configure as variáveis SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente da Vercel.');
+    erro.status = 500;
+    throw erro;
+  }
   const headers = {
     apikey: SUPABASE_KEY,
     Authorization: 'Bearer ' + SUPABASE_KEY,

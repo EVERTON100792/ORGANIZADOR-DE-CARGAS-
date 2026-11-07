@@ -48,12 +48,12 @@ Há duas formas:
 
 ## Deploy na Vercel
 
-O projeto usa o modo **Express zero-config** da Vercel:
+O projeto está configurado para a Vercel com função Serverless (`api/index.js`) e arquivos estáticos otimizados via CDN:
 
-- `server.js` — entrypoint do backend; exporta o app Express e só inicia o `listen` quando executado localmente (`npm start`).
-- `public/` — arquivos estáticos servidos automaticamente pela CDN da Vercel.
-- Não é necessário configurar Build Command, Output Directory nem função serverless separada.
-- A versão do Node.js está fixada em **26.x** no `package.json`, conforme exigência atual da Vercel.
+- `api/index.js` — função serverless que executa o backend Express em todas as rotas `/api/*`.
+- `vercel.json` — gerencia o roteamento entre os arquivos estáticos (`public/`) e a API (`api/index.js`).
+- `server.js` — exporta o app Express e inicia o `listen` no modo local (`npm start`).
+- `package.json` — Node.js compatível (`>=20.x`).
 
 Passos:
 
@@ -61,11 +61,14 @@ Passos:
 2. Em **Environment Variables**, adicione (para Production, Preview e Development):
    - `SUPABASE_URL` = `https://jpafrighyyhfyvveqipm.supabase.co`
    - `SUPABASE_SERVICE_ROLE_KEY` = sua chave service_role
-3. Em **Settings → Build & Development Settings**, deixe **Output Directory** vazio e não informe Build Command.
-4. Clique em **Deploy**. A Vercel detecta o Express em `server.js` automaticamente e publica os estáticos de `public/`.
+3. Em **Settings → Build & Development Settings**:
+   - **Framework Preset**: selecione `Other`
+   - **Build Command**: deixe desmarcado/vazio
+   - **Output Directory**: deixe desmarcado/vazio
+4. Clique em **Deploy**.
 5. O sistema ficará disponível em `https://<nome-do-projeto>.vercel.app`.
 
-> Se o projeto já foi criado com **Output Directory = public**, apague esse valor nas configurações e faça um novo deploy. Caso contrário o build falha com `No entrypoint found in output directory: "public"`.
+> **Importante:** Se você já tinha importado o projeto antes e configurado **Output Directory** como `public`, vá em **Settings → Build & Development Settings**, desligue o botão de Override do **Output Directory** (deixe vazio) e faça um **Redeploy**.
 >
 > Sempre que alterar variáveis de ambiente na Vercel, faça um novo deploy para aplicá-las. A chave `service_role` fica somente no servidor (variável de ambiente), nunca no navegador.
 
@@ -142,6 +145,8 @@ Passos:
 
 ```
 server.js                  # API REST + servidor + cliente Supabase (exporta o app)
+api/index.js               # Handler serverless para a Vercel
+vercel.json                # Roteamento estático e serverless da Vercel
 public/index.html          # Interface
 public/css/style.css       # Estilos (incl. versão de impressão)
 public/js/app.js           # Lógica da interface
