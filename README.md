@@ -53,6 +53,7 @@ O projeto usa o modo **Express zero-config** da Vercel:
 - `server.js` — entrypoint do backend; exporta o app Express e só inicia o `listen` quando executado localmente (`npm start`).
 - `public/` — arquivos estáticos servidos automaticamente pela CDN da Vercel.
 - Não é necessário configurar Build Command, Output Directory nem função serverless separada.
+- A versão do Node.js está fixada em **26.x** no `package.json`, conforme exigência atual da Vercel.
 
 Passos:
 
