@@ -7,6 +7,96 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  <!-- TELA DE LOGIN E AUTENTICAÇÃO -->
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          </svg>
+        </div>
+        <h2>Organizador de Cargas</h2>
+        <p>Acesse o painel para gerenciar e priorizar as saídas</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="tab-auth-login">Entrar</button>
+        <button type="button" class="auth-tab" id="tab-auth-cadastro">Criar Conta</button>
+      </div>
+
+      <div id="auth-msg" class="auth-msg" hidden></div>
+
+      <!-- Formulário de Login -->
+      <form id="form-login" class="auth-form" autocomplete="on">
+        <div class="form-group">
+          <label for="login-email">E-mail corporativo</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">✉️</span>
+            <input id="login-email" type="email" placeholder="usuario@selmi.com.br" required autocomplete="email" value="admin@selmi.com.br">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="login-senha">Senha</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">🔒</span>
+            <input id="login-senha" type="password" placeholder="Sua senha de acesso" required autocomplete="current-password" value="admin@selmi">
+            <button type="button" class="btn-toggle-senha" id="btn-toggle-senha-login" title="Mostrar/ocultar senha">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-login" class="btn btn-primary btn-auth">
+          <span>Entrar no Sistema</span>
+        </button>
+
+        <div class="auth-hint">
+          <span>💡 <strong>Acesso configurado:</strong> admin@selmi.com.br | <strong>Senha:</strong> admin@selmi</span>
+        </div>
+      </form>
+
+      <!-- Formulário de Cadastro -->
+      <form id="form-cadastro" class="auth-form" autocomplete="off" style="display: none;">
+        <div class="form-group">
+          <label for="cadastro-nome">Nome Completo</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">👤</span>
+            <input id="cadastro-nome" type="text" placeholder="Seu nome ou cargo" required autocomplete="name">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="cadastro-email">E-mail corporativo (@selmi.com.br)</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">✉️</span>
+            <input id="cadastro-email" type="email" placeholder="seu-nome@selmi.com.br" required autocomplete="email" pattern=".+@selmi\.com\.br$" title="O e-mail deve terminar com @selmi.com.br">
+          </div>
+          <span class="field-hint">Apenas contas finalizadas em @selmi.com.br</span>
+        </div>
+
+        <div class="form-group">
+          <label for="cadastro-senha">Senha</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">🔒</span>
+            <input id="cadastro-senha" type="password" placeholder="Mínimo 6 caracteres" minlength="6" required autocomplete="new-password">
+            <button type="button" class="btn-toggle-senha" id="btn-toggle-senha-cadastro" title="Mostrar/ocultar senha">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-cadastro" class="btn btn-primary btn-auth">
+          <span>Criar Minha Conta</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span>🔒 Autenticação segura integrada ao Supabase Auth</span>
+      </div>
+    </div>
+  </div>
+
   <div id="app">
     <header class="topbar">
       <div class="brand">
@@ -18,6 +108,11 @@
       <div class="topbar-actions">
         <button id="btn-imprimir-top" class="btn btn-print">🖨 IMPRIMIR FILA DE PRIORIDADE</button>
         <button id="btn-nova-carga" class="btn btn-light">＋ Nova Carga</button>
+        <div class="user-pill" id="user-pill">
+          <span class="user-avatar" id="user-avatar">👤</span>
+          <span class="user-name" id="user-name">Usuário</span>
+          <button id="btn-logout" class="btn-logout" title="Sair do sistema">Sair ↪</button>
+        </div>
       </div>
     </header>
 
@@ -70,7 +165,10 @@
             <button id="btn-selecionar-qtd" class="btn btn-ghost" type="button">Selecionar primeiras</button>
             <button id="btn-limpar-selecao" class="btn btn-ghost" type="button">Limpar seleção</button>
             <span id="seq-contador" class="seq-count">0 cargas selecionadas</span>
-            <button id="btn-imprimir-selecionadas" class="btn btn-primary" type="button" disabled>🖨 Imprimir sequência (0)</button>
+            <div class="seq-actions">
+              <button id="btn-imprimir-selecionadas" class="btn btn-primary" type="button" disabled>🖨 Imprimir sequência (0)</button>
+              <button id="btn-despachar-selecionadas" class="btn btn-success" type="button" disabled>✓ Despachar selecionadas (0)</button>
+            </div>
           </div>
           <div class="table-wrapper">
             <table class="table fila-table">
@@ -83,7 +181,7 @@
                   <th>Data do Pedido</th>
                   <th>Observações</th>
                   <th>Status</th>
-                  <th></th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="fila-tbody"></tbody>

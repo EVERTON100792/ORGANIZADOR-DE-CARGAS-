@@ -7,6 +7,8 @@ const state = {
   historico: [],
   selecionadas: new Set(),
   est: { total: 0, ativas: 0, despachadas: 0 },
+  usuario: null,
+  token: null,
 };
 
 let confirmacaoResolver = null;
@@ -46,12 +48,20 @@ function esc(str) {
 }
 
 async function api(url, op, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.token) {
+    headers['Authorization'] = 'Bearer ' + state.token;
+  }
   const res = await fetch(url, {
     method: op || 'GET',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && !url.includes('/api/auth/')) {
+    fazerLogout('Sua sessão expirou. Faça login novamente.');
+    throw new Error('Sessão expirada.');
+  }
   if (!res.ok) throw new Error(data.erro || `Erro ${res.status} ao comunicar com o servidor.`);
   return data;
 }
@@ -155,6 +165,15 @@ function renderFila() {
     tdStatus.appendChild(badge);
 
     const tdAcoes = document.createElement('td');
+    tdAcoes.className = 'td-acoes-fila';
+
+    const btnDespachar = document.createElement('button');
+    btnDespachar.className = 'btn btn-acao btn-despachar-linha';
+    btnDespachar.dataset.id = idStr;
+    btnDespachar.dataset.acao = 'despachar';
+    btnDespachar.title = 'Marcar romaneio como despachado';
+    btnDespachar.textContent = '✓ Despachar';
+
     const btn = document.createElement('button');
     btn.className = 'btn btn-ghost btn-acao';
     btn.dataset.id = String(f.id);
@@ -165,7 +184,7 @@ function renderFila() {
     btnExcluir.dataset.id = String(f.id);
     btnExcluir.dataset.acao = 'excluir';
     btnExcluir.textContent = 'Excluir';
-    tdAcoes.append(btn, btnExcluir);
+    tdAcoes.append(btnDespachar, btn, btnExcluir);
 
     const tr = document.createElement('tr');
     tr.className = classeLinha + (selecionada ? ' row-selecionada' : '');
@@ -488,12 +507,17 @@ function atualizarBarraSelecao() {
   const n = state.selecionadas.size;
   const contador = document.getElementById('seq-contador');
   const btn = document.getElementById('btn-imprimir-selecionadas');
+  const btnDespachar = document.getElementById('btn-despachar-selecionadas');
   const todos = document.getElementById('check-todos');
 
   if (contador) contador.textContent = `${n} ${n === 1 ? 'carga selecionada' : 'cargas selecionadas'}`;
   if (btn) {
     btn.disabled = n === 0;
     btn.textContent = `🖨 Imprimir sequência (${n})`;
+  }
+  if (btnDespachar) {
+    btnDespachar.disabled = n === 0;
+    btnDespachar.textContent = `✓ Despachar selecionadas (${n})`;
   }
   if (todos) {
     todos.disabled = total === 0;
@@ -550,6 +574,60 @@ async function abrirRelatorioSelecionadas() {
     window.print();
   } catch (e) {
     toast(e.message, 'erro');
+  }
+}
+
+async function despacharCargaIndividual(id, numero) {
+  const mensagem = numero
+    ? `Deseja despachar o romaneio ${numero}? Ele sairá da fila de prioridade ativa e será arquivado no Histórico de Despachados.`
+    : 'Deseja marcar este romaneio como despachado?';
+  const confirmado = await abrirConfirmacao(mensagem);
+  if (!confirmado) return;
+  try {
+    await api('/api/cargas/' + id + '/status', 'PATCH', { status: 'Despachada' });
+    toast(`Romaneio ${numero || id} despachado com sucesso!`, 'ok');
+    await recarregarTudo();
+  } catch (e) {
+    toast(e.message, 'erro');
+  }
+}
+
+async function despacharSelecionadas() {
+  const ids = Array.from(state.selecionadas).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  if (!ids.length) {
+    toast('Selecione ao menos uma carga para despachar.', 'erro');
+    return;
+  }
+  const qtd = ids.length;
+  const textoQtd = qtd === 1 ? '1 carga selecionada' : `${qtd} cargas selecionadas`;
+  const confirmado = await abrirConfirmacao(
+    `Deseja marcar ${textoQtd} como DESPACHADA(S)? Elas serão removidas da fila de prioridade ativa e arquivadas no Histórico de Despachados.`
+  );
+  if (!confirmado) return;
+
+  const btn = document.getElementById('btn-despachar-selecionadas');
+  const textoOriginal = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Despachando...';
+  }
+
+  try {
+    const res = await api('/api/cargas/status-em-massa', 'POST', {
+      ids,
+      status: 'Despachada',
+    });
+    state.selecionadas.clear();
+    toast(`${res.atualizados || qtd} carga(s) despachada(s) com sucesso!`, 'ok');
+    await recarregarTudo();
+  } catch (e) {
+    toast(e.message || 'Erro ao despachar cargas em massa.', 'erro');
+  } finally {
+    if (btn) {
+      btn.disabled = state.selecionadas.size === 0;
+      btn.textContent = `✓ Despachar selecionadas (${state.selecionadas.size})`;
+      atualizarBarraSelecao();
+    }
   }
 }
 
@@ -709,6 +787,7 @@ document.addEventListener('keydown', (e) => {
 document.getElementById('btn-imprimir-top').addEventListener('click', abrirRelatorio);
 document.getElementById('btn-imprimir-fila').addEventListener('click', abrirRelatorio);
 document.getElementById('btn-imprimir-selecionadas').addEventListener('click', abrirRelatorioSelecionadas);
+document.getElementById('btn-despachar-selecionadas').addEventListener('click', despacharSelecionadas);
 document.getElementById('btn-selecionar-qtd').addEventListener('click', selecionarPrimeiras);
 document.getElementById('btn-limpar-selecao').addEventListener('click', limparSelecao);
 
@@ -744,6 +823,7 @@ document.getElementById('fila-tbody').addEventListener('click', async (e) => {
   const id = Number(btn.dataset.id);
   const numero = btn.closest('tr')?.querySelector('td strong')?.textContent.trim() || '';
   try {
+    if (btn.dataset.acao === 'despachar') await despacharCargaIndividual(id, numero);
     if (btn.dataset.acao === 'editar') {
       const carga = await api('/api/cargas/' + id);
       abrirModalEditar(carga);
@@ -800,6 +880,179 @@ document.getElementById('btn-limpar-filtros').addEventListener('click', async ()
   el.addEventListener('input', renderGerenciarComFiltros);
 });
 
+// ------------------------------ Autenticação Supabase ------------------------------
+
+function exibirAuthMsg(msg, tipo) {
+  const box = document.getElementById('auth-msg');
+  if (!box) return;
+  box.className = 'auth-msg ' + (tipo || 'erro');
+  box.textContent = msg;
+  box.hidden = false;
+}
+
+function limparAuthMsg() {
+  const box = document.getElementById('auth-msg');
+  if (box) box.hidden = true;
+}
+
+function alternarAbasAuth(aba) {
+  limparAuthMsg();
+  const tabLogin = document.getElementById('tab-auth-login');
+  const tabCadastro = document.getElementById('tab-auth-cadastro');
+  const formLogin = document.getElementById('form-login');
+  const formCadastro = document.getElementById('form-cadastro');
+
+  if (aba === 'cadastro') {
+    tabLogin.classList.remove('active');
+    tabCadastro.classList.add('active');
+    formLogin.style.display = 'none';
+    formCadastro.style.display = 'block';
+    document.getElementById('cadastro-nome').focus();
+  } else {
+    tabCadastro.classList.remove('active');
+    tabLogin.classList.add('active');
+    formCadastro.style.display = 'none';
+    formLogin.style.display = 'block';
+    document.getElementById('login-email').focus();
+  }
+}
+
+function alternarVisibilidadeSenha(idInput) {
+  const input = document.getElementById(idInput);
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+function aplicarUsuarioNaTela(usuario) {
+  const nameEl = document.getElementById('user-name');
+  if (nameEl && usuario) {
+    nameEl.textContent = usuario.nome || usuario.email.split('@')[0];
+  }
+}
+
+function abrirApp() {
+  const authScreen = document.getElementById('auth-screen');
+  const appEl = document.getElementById('app');
+  if (authScreen) authScreen.style.display = 'none';
+  if (appEl) appEl.style.display = 'block';
+}
+
+function fecharAppParaLogin() {
+  const authScreen = document.getElementById('auth-screen');
+  const appEl = document.getElementById('app');
+  if (appEl) appEl.style.display = 'none';
+  if (authScreen) {
+    authScreen.style.display = 'flex';
+    alternarAbasAuth('login');
+  }
+}
+
+async function fazerLogin(e) {
+  if (e) e.preventDefault();
+  limparAuthMsg();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-senha').value;
+  const btn = document.getElementById('btn-submit-login');
+  const textoOriginal = btn ? btn.innerHTML : '';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>Entrando...</span>';
+  }
+
+  try {
+    const res = await api('/api/auth/login', 'POST', { email, password });
+    state.token = res.token;
+    state.usuario = res.user;
+    localStorage.setItem('cargas_auth_token', res.token);
+    localStorage.setItem('cargas_auth_user', JSON.stringify(res.user));
+    aplicarUsuarioNaTela(res.user);
+    abrirApp();
+    toast(`Bem-vindo, ${res.user.nome}!`, 'ok');
+    await recarregarTudo();
+  } catch (err) {
+    exibirAuthMsg(err.message, 'erro');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = textoOriginal;
+    }
+  }
+}
+
+async function fazerCadastro(e) {
+  if (e) e.preventDefault();
+  limparAuthMsg();
+  const nome = document.getElementById('cadastro-nome').value.trim();
+  const email = document.getElementById('cadastro-email').value.trim().toLowerCase();
+  const password = document.getElementById('cadastro-senha').value;
+
+  if (!email.endsWith('@selmi.com.br')) {
+    exibirAuthMsg('Por segurança, o cadastro só é permitido para e-mails corporativos @selmi.com.br.', 'erro');
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit-cadastro');
+  const textoOriginal = btn ? btn.innerHTML : '';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>Criando conta...</span>';
+  }
+
+  try {
+    await api('/api/auth/cadastro', 'POST', { nome, email, password });
+    exibirAuthMsg('Conta criada com sucesso no Supabase! Você já pode entrar.', 'sucesso');
+    document.getElementById('login-email').value = email;
+    document.getElementById('login-senha').value = password;
+    setTimeout(() => alternarAbasAuth('login'), 1200);
+  } catch (err) {
+    exibirAuthMsg(err.message, 'erro');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = textoOriginal;
+    }
+  }
+}
+
+function fazerLogout(mensagem) {
+  state.token = null;
+  state.usuario = null;
+  localStorage.removeItem('cargas_auth_token');
+  localStorage.removeItem('cargas_auth_user');
+  fecharAppParaLogin();
+  if (mensagem) {
+    exibirAuthMsg(mensagem, 'erro');
+  } else {
+    toast('Você saiu do sistema.', 'ok');
+  }
+}
+
+async function verificarSessaoInicial() {
+  const token = localStorage.getItem('cargas_auth_token');
+  const userJson = localStorage.getItem('cargas_auth_user');
+
+  if (!token || !userJson) {
+    fecharAppParaLogin();
+    return false;
+  }
+
+  try {
+    state.token = token;
+    state.usuario = JSON.parse(userJson);
+    aplicarUsuarioNaTela(state.usuario);
+    abrirApp();
+    api('/api/auth/me').catch(() => {
+      fazerLogout('Sessão expirada. Faça login novamente.');
+    });
+    return true;
+  } catch (e) {
+    fazerLogout();
+    return false;
+  }
+}
+
 // ------------------------------ Init ------------------------------
 
 async function init() {
@@ -809,11 +1062,23 @@ async function init() {
     TIPOS_VEICULO.map((t) => `<option value="${t}">${t}</option>`).join('');
   document.getElementById('filtro-status').innerHTML = '<option value="">Todos os status</option>' + STATUS_LIST.map((s) => `<option value="${s}">${s}</option>`).join('');
 
-  await recarregarTudo();
-
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => ativarAba(tab.dataset.tab));
   });
+
+  // Eventos da Tela de Login e Cadastro
+  document.getElementById('tab-auth-login')?.addEventListener('click', () => alternarAbasAuth('login'));
+  document.getElementById('tab-auth-cadastro')?.addEventListener('click', () => alternarAbasAuth('cadastro'));
+  document.getElementById('btn-toggle-senha-login')?.addEventListener('click', () => alternarVisibilidadeSenha('login-senha'));
+  document.getElementById('btn-toggle-senha-cadastro')?.addEventListener('click', () => alternarVisibilidadeSenha('cadastro-senha'));
+  document.getElementById('form-login')?.addEventListener('submit', fazerLogin);
+  document.getElementById('form-cadastro')?.addEventListener('submit', fazerCadastro);
+  document.getElementById('btn-logout')?.addEventListener('click', () => fazerLogout());
+
+  const logado = await verificarSessaoInicial();
+  if (logado) {
+    await recarregarTudo();
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

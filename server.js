@@ -211,6 +211,116 @@ app.get('/api/health', (req, res) => res.json({
   supabaseConfigured: Boolean(SUPABASE_URL && SUPABASE_KEY)
 }));
 
+// ---------------------------------------------------------------- Autenticação Supabase
+
+app.post('/api/auth/login', rota(async (req, res) => {
+  const email = String((req.body || {}).email || '').trim().toLowerCase();
+  const password = String((req.body || {}).password || '');
+  if (!email || !password) {
+    return res.status(400).json({ erro: 'Informe o e-mail e a senha.' });
+  }
+
+  const response = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
+  }
+
+  res.json({
+    ok: true,
+    user: {
+      id: data.user.id,
+      email: data.user.email,
+      nome: (data.user.user_metadata && data.user.user_metadata.nome) || data.user.email.split('@')[0],
+    },
+    token: data.access_token,
+  });
+}));
+
+app.post('/api/auth/cadastro', rota(async (req, res) => {
+  const email = String((req.body || {}).email || '').trim().toLowerCase();
+  const password = String((req.body || {}).password || '');
+  const nome = String((req.body || {}).nome || '').trim();
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+  }
+  if (!email.endsWith('@selmi.com.br')) {
+    return res.status(400).json({
+      erro: 'Por segurança, o cadastro é permitido apenas para e-mails corporativos @selmi.com.br.',
+    });
+  }
+  if (!password || password.length < 6) {
+    return res.status(400).json({ erro: 'A senha deve conter no mínimo 6 caracteres.' });
+  }
+
+  const response = await fetch(SUPABASE_URL + '/auth/v1/admin/users', {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { nome: nome || email.split('@')[0] },
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const msg = data.msg || data.message || 'Erro ao criar conta no Supabase.';
+    return res.status(400).json({
+      erro: msg.includes('already registered') || msg.includes('already exists')
+        ? 'Este e-mail já está cadastrado no sistema.'
+        : msg,
+    });
+  }
+
+  res.json({
+    ok: true,
+    user: {
+      id: data.id,
+      email: data.email,
+      nome: (data.user_metadata && data.user_metadata.nome) || data.email.split('@')[0],
+    },
+  });
+}));
+
+app.get('/api/auth/me', rota(async (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) return res.status(401).json({ erro: 'Sessão não informada.' });
+
+  const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + token,
+    },
+  });
+  const user = await response.json();
+  if (!response.ok || !user || !user.id) {
+    return res.status(401).json({ erro: 'Sessão expirada. Faça login novamente.' });
+  }
+
+  res.json({
+    ok: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      nome: (user.user_metadata && user.user_metadata.nome) || user.email.split('@')[0],
+    },
+  });
+}));
+
 app.get('/api/fila', rota(async (req, res) => {
   res.json(await filaAtiva());
 }));
@@ -417,6 +527,65 @@ app.patch('/api/cargas/:id/status', rota(async (req, res) => {
     await registrarHistorico(id, 'status', 'status', carga.status, status.valor, status.valor === 'Despachada' ? 'Carga despachada' : 'Status alterado');
   }
   res.json(await obterCarga(id));
+}));
+
+app.post('/api/cargas/status-em-massa', rota(async (req, res) => {
+  const idsRaw = Array.isArray(req.body.ids) ? req.body.ids : [];
+  const ids = idsRaw.map((v) => Number(v)).filter((v) => Number.isInteger(v) && v > 0);
+  if (ids.length === 0) {
+    return res.status(400).json({ erro: 'Selecione ao menos uma carga válida.' });
+  }
+  const status = normalizarStatus(req.body.status);
+  if (!status.valido) return res.status(400).json({ erro: status.erro });
+
+  const chunkSize = 100;
+  let atualizadosTotal = 0;
+
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunkIds = ids.slice(i, i + chunkSize);
+    const lista = await sb('/cargas?select=id,status,numeroRomaneio&id=in.(' + chunkIds.join(',') + ')');
+    if (!lista || lista.length === 0) continue;
+
+    const idsParaAtualizar = lista
+      .filter((c) => String(c.status) !== status.valor)
+      .map((c) => c.id);
+
+    if (idsParaAtualizar.length > 0) {
+      const agoraStr = agora();
+      const atualizacoes = {
+        status: status.valor,
+        atualizadoEm: agoraStr,
+      };
+      if (status.valor === 'Despachada') {
+        atualizacoes.dataDespacho = hoje();
+      } else {
+        atualizacoes.dataDespacho = null;
+      }
+
+      await sb('/cargas?id=in.(' + idsParaAtualizar.join(',') + ')', {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(atualizacoes),
+      });
+
+      for (const carga of lista) {
+        if (String(carga.status) !== status.valor) {
+          await registrarHistorico(
+            carga.id,
+            'status',
+            'status',
+            carga.status,
+            status.valor,
+            status.valor === 'Despachada' ? 'Carga despachada em massa' : 'Status alterado em massa'
+          );
+        }
+      }
+
+      atualizadosTotal += idsParaAtualizar.length;
+    }
+  }
+
+  res.json({ ok: true, atualizados: atualizadosTotal, total: ids.length });
 }));
 
 app.delete('/api/cargas/:id', rota(async (req, res) => {
