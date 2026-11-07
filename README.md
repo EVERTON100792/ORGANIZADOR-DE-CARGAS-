@@ -44,7 +44,26 @@ O RLS está habilitado nas tabelas — o acesso anônimo é bloqueado; somente o
 Há duas formas:
 
 1. **Mesma rede local:** com o servidor rodando, o console exibe o endereço `http://IP-da-maquina:3000`. Basta abrir esse endereço no navegador do outro computador (o firewall do Windows precisa permitir a porta 3000).
-2. **Outra rede / internet:** hospede o projeto (por exemplo, Railway, Render ou VPS) usando as mesmas variáveis do `.env`. Como o banco está no Supabase, os dados são os mesmos em qualquer instalação.
+2. **Outra rede / internet:** publique o projeto na Vercel (recomendado, instruções abaixo) ou em outro serviço usando as mesmas variáveis do `.env`. Como o banco está no Supabase, os dados são os mesmos em qualquer instalação.
+
+## Deploy na Vercel
+
+O projeto já está preparado para a Vercel:
+
+- `api/[...path].js` — função serverless que executa o backend Express em todas as rotas `/api/*`.
+- `vercel.json` — publica os arquivos estáticos de `public/` e define a duração máxima da função.
+- `server.js` — exporta o app Express e só inicia o `listen` quando executado localmente (`npm start`).
+
+Passos:
+
+1. Acesse [vercel.com/new](https://vercel.com/new) e importe o repositório `EVERTON100792/ORGANIZADOR-DE-CARGAS-`.
+2. Em **Environment Variables**, adicione (para Production, Preview e Development):
+   - `SUPABASE_URL` = `https://jpafrighyyhfyvveqipm.supabase.co`
+   - `SUPABASE_SERVICE_ROLE_KEY` = sua chave service_role
+3. Clique em **Deploy**. Não é necessário build; a Vercel detecta a pasta `api/` e os estáticos em `public/`.
+4. O sistema ficará disponível em `https://<nome-do-projeto>.vercel.app`.
+
+> Sempre que alterar variáveis de ambiente na Vercel, faça um novo deploy para aplicá-las. A chave `service_role` fica somente no servidor (variável de ambiente), nunca no navegador.
 
 ## Funcionalidades
 
@@ -103,7 +122,9 @@ Há duas formas:
 ## Estrutura
 
 ```
-server.js                  # API REST + servidor + cliente Supabase
+server.js                  # API REST + servidor + cliente Supabase (exporta o app)
+api/[...path].js           # Função serverless da Vercel (/api/*)
+vercel.json                # Configuração de deploy (estáticos + função)
 public/index.html          # Interface
 public/css/style.css       # Estilos (incl. versão de impressão)
 public/js/app.js           # Lógica da interface

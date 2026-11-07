@@ -449,8 +449,12 @@ function ipsLocais() {
   return saida;
 }
 
-app.listen(PORT, () => {
-  console.log(`Servidor de Organização de Cargas rodando em http://localhost:${PORT}`);
-  ipsLocais().forEach((ip) => console.log(`Acesso na rede local: http://${ip}:${PORT}`));
-  console.log(`Banco de dados: Supabase (${SUPABASE_URL})`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor de Organização de Cargas rodando em http://localhost:${PORT}`);
+    ipsLocais().forEach((ip) => console.log(`Acesso na rede local: http://${ip}:${PORT}`));
+    console.log(`Banco de dados: Supabase (${SUPABASE_URL})`);
+  });
+}
+
+module.exports = app;
