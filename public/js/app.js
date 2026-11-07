@@ -1,4 +1,5 @@
 const STATUS_LIST = ['Montada', 'Aguardando Expedição', 'Liberada', 'Despachada'];
+const TIPOS_VEICULO = ['Van', 'Fiorino', 'Três Quartos', 'Toco'];
 
 const state = {
   fila: [],
@@ -120,6 +121,9 @@ function renderFila() {
     strong.textContent = f.numeroRomaneio;
     tdNum.appendChild(strong);
 
+    const tdVeiculo = document.createElement('td');
+    tdVeiculo.textContent = f.tipoVeiculo || '–';
+
     const tdData = document.createElement('td');
     tdData.textContent = formatarData(f.dataPedido);
 
@@ -147,7 +151,7 @@ function renderFila() {
 
     const tr = document.createElement('tr');
     tr.className = classeLinha;
-    tr.append(tdPos, tdNum, tdData, tdObs, tdStatus, tdAcoes);
+    tr.append(tdPos, tdNum, tdVeiculo, tdData, tdObs, tdStatus, tdAcoes);
     tbody.appendChild(tr);
   });
 
@@ -189,6 +193,9 @@ async function renderGerenciarComFiltros() {
     strong.textContent = c.numeroRomaneio;
     tdNum.appendChild(strong);
 
+    const tdVeiculo = document.createElement('td');
+    tdVeiculo.textContent = c.tipoVeiculo || '–';
+
     const tdData = document.createElement('td');
     tdData.textContent = formatarData(c.dataPedido);
 
@@ -225,7 +232,7 @@ async function renderGerenciarComFiltros() {
     btnExcluir.textContent = 'Excluir';
     tdAcoes.append(btnEditar, btnExcluir);
 
-    tr.append(tdNum, tdData, tdObs, tdStatus, tdDesp, tdAcoes);
+    tr.append(tdNum, tdVeiculo, tdData, tdObs, tdStatus, tdDesp, tdAcoes);
     tbody.appendChild(tr);
   });
 }
@@ -244,6 +251,9 @@ function renderDespachados() {
     const strong = document.createElement('strong');
     strong.textContent = c.numeroRomaneio;
     tdNum.appendChild(strong);
+
+    const tdVeiculo = document.createElement('td');
+    tdVeiculo.textContent = c.tipoVeiculo || '–';
 
     const tdData = document.createElement('td');
     tdData.textContent = formatarData(c.dataPedido);
@@ -268,7 +278,7 @@ function renderDespachados() {
     btn.textContent = 'Histórico';
     tdAcoes.appendChild(btn);
 
-    tr.append(tdNum, tdData, tdDesp, tdObs, tdStatus, tdAcoes);
+    tr.append(tdNum, tdVeiculo, tdData, tdDesp, tdObs, tdStatus, tdAcoes);
     tbody.appendChild(tr);
   });
 }
@@ -304,6 +314,7 @@ function abrirModalCriar() {
   document.getElementById('modal-id-carga').value = '';
   document.getElementById('campo-romaneio').value = '';
   document.getElementById('campo-dataPedido').value = '';
+  document.getElementById('campo-tipoVeiculo').value = '';
   document.getElementById('campo-status').value = 'Montada';
   document.getElementById('campo-observacoes').value = '';
   document.getElementById('modal-carga').classList.add('open');
@@ -314,6 +325,7 @@ function abrirModalEditar(carga) {
   document.getElementById('modal-id-carga').value = String(carga.id);
   document.getElementById('campo-romaneio').value = carga.numeroRomaneio;
   document.getElementById('campo-dataPedido').value = String(carga.dataPedido || '').slice(0, 10);
+  document.getElementById('campo-tipoVeiculo').value = carga.tipoVeiculo || '';
   document.getElementById('campo-status').value = carga.status;
   document.getElementById('campo-observacoes').value = carga.observacoes || '';
   document.getElementById('modal-carga').classList.add('open');
@@ -326,6 +338,7 @@ function fecharModal() {
 async function salvarCarga() {
   const numero = document.getElementById('campo-romaneio').value.trim();
   const dataPedido = document.getElementById('campo-dataPedido').value;
+  const tipoVeiculo = document.getElementById('campo-tipoVeiculo').value;
   const status = document.getElementById('campo-status').value;
   const observacoes = document.getElementById('campo-observacoes').value.trim();
 
@@ -334,7 +347,12 @@ async function salvarCarga() {
     return;
   }
 
-  const body = { numeroRomaneio: numero, dataPedido, status, observacoes };
+  if (!tipoVeiculo) {
+    toast('Selecione o tipo de veículo.', 'erro');
+    return;
+  }
+
+  const body = { numeroRomaneio: numero, dataPedido, tipoVeiculo, status, observacoes };
   const id = document.getElementById('modal-id-carga').value;
   try {
     if (!id) {
@@ -454,9 +472,10 @@ async function consultarRomaneio() {
     const despachada = String(carga.status) === 'Despachada';
     box.className = 'consulta-resultado ' + (despachada ? 'despachada' : 'cadastrada');
     const dataDespacho = carga.dataDespacho ? ` em ${formatarData(carga.dataDespacho)}` : '';
+    const veiculo = carga.tipoVeiculo ? ` (Veículo: ${carga.tipoVeiculo})` : '';
     box.textContent = despachada
-      ? `Romaneio ${carga.numeroRomaneio} já foi DESPACHADO${dataDespacho}. Não é necessário cadastrar novamente.`
-      : `Romaneio ${carga.numeroRomaneio} já está cadastrado com status "${carga.status}". Não é necessário cadastrar novamente.`;
+      ? `Romaneio ${carga.numeroRomaneio} já foi DESPACHADO${dataDespacho}${veiculo}. Não é necessário cadastrar novamente.`
+      : `Romaneio ${carga.numeroRomaneio} já está cadastrado com status "${carga.status}"${veiculo}. Não é necessário cadastrar novamente.`;
   } catch (e) {
     box.className = 'consulta-resultado erro';
     box.textContent = e.message;
@@ -588,6 +607,9 @@ document.getElementById('btn-limpar-filtros').addEventListener('click', async ()
 
 async function init() {
   document.getElementById('campo-status').innerHTML = STATUS_LIST.map((s) => `<option value="${s}">${s}</option>`).join('');
+  document.getElementById('campo-tipoVeiculo').innerHTML =
+    '<option value="">Selecione...</option>' +
+    TIPOS_VEICULO.map((t) => `<option value="${t}">${t}</option>`).join('');
   document.getElementById('filtro-status').innerHTML = '<option value="">Todos os status</option>' + STATUS_LIST.map((s) => `<option value="${s}">${s}</option>`).join('');
 
   await recarregarTudo();

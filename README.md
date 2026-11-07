@@ -68,7 +68,8 @@ Passos:
 ## Funcionalidades
 
 ### 1. Cadastro de cargas
-- Cadastro de número do romaneio, data do pedido, observações e status.
+- Cadastro de número do romaneio, data do pedido, tipo de veículo, observações e status.
+- Tipo de veículo: Van, Fiorino, Três Quartos ou Toco.
 - Status: Montada, Aguardando Expedição, Liberada, Despachada.
 - Edição e exclusão de registros.
 - Alteração de status.
@@ -95,7 +96,7 @@ Passos:
 
 ### 5. Impressão de relatório para gerência
 - Botão destacado "IMPRIMIR FILA DE PRIORIDADE".
-- Relatório formal sem nomes e sem logotipo: cabeçalho com borda dupla, título, data/hora de emissão, tabela listrada da fila, destaque em negrito dos 3 primeiros e rodapé centralizado.
+- Relatório formal sem nomes e sem logotipo: cabeçalho com borda dupla, título, data/hora de emissão, tabela listrada da fila (com posição, romaneio, veículo, data do pedido, observações e status), destaque em negrito dos 3 primeiros e rodapé centralizado.
 - Versão otimizada para impressão em A4 (`@page size: A4`), sem menus/botões da interface.
 
 ### 6. Filtros e pesquisa

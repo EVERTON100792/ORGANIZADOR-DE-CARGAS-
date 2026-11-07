@@ -13,6 +13,8 @@ window.Relatorio = {
       tdPos.textContent = f.posicao + 'º';
       const tdNum = document.createElement('td');
       tdNum.textContent = f.numeroRomaneio;
+      const tdVeiculo = document.createElement('td');
+      tdVeiculo.textContent = f.tipoVeiculo || '–';
       const tdData = document.createElement('td');
       tdData.textContent = f.dataPedido ? String(f.dataPedido).slice(0, 10).split('-').reverse().join('/') : '–';
       const tdObs = document.createElement('td');
@@ -24,7 +26,7 @@ window.Relatorio = {
       else if (f.posicao === 2) tr.className = 'report-top-2';
       else if (f.posicao === 3) tr.className = 'report-top-3';
 
-      tr.append(tdPos, tdNum, tdData, tdObs, tdStatus);
+      tr.append(tdPos, tdNum, tdVeiculo, tdData, tdObs, tdStatus);
       tbody.appendChild(tr);
     });
   },

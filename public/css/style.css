@@ -201,7 +201,7 @@ body {
 /* ------------------------------ Table ------------------------------ */
 .table-wrapper { overflow-x: auto; }
 
-.table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.table { width: 100%; border-collapse: collapse; min-width: 760px; }
 
 .table th {
   text-align: left;

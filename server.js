@@ -25,6 +25,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const REST = SUPABASE_URL + '/rest/v1';
 const STATUS_LIST = ['Montada', 'Aguardando Expedição', 'Liberada', 'Despachada'];
+const TIPOS_VEICULO = ['Van', 'Fiorino', 'Três Quartos', 'Toco'];
 const TZ = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
 
 // ---------------------------------------------------------------- Cliente Supabase
@@ -127,6 +128,13 @@ function normalizarStatus(valor) {
   const status = (valor || '').toString().trim();
   if (!STATUS_LIST.includes(status)) return { valido: false, erro: 'Selecione um status válido.' };
   return { valido: true, valor: status };
+}
+
+function normalizarTipoVeiculo(valor) {
+  const v = (valor || '').toString().trim();
+  if (!v) return { valido: true, valor: '' };
+  if (!TIPOS_VEICULO.includes(v)) return { valido: false, erro: 'Selecione um tipo de veículo válido.' };
+  return { valido: true, valor: v };
 }
 
 function validarRomaneio(valor) {
@@ -273,6 +281,9 @@ app.post('/api/cargas', rota(async (req, res) => {
   const status = normalizarStatus(body.status);
   if (!status.valido) return res.status(400).json({ erro: status.erro });
 
+  const tipoVeiculo = normalizarTipoVeiculo(body.tipoVeiculo);
+  if (!tipoVeiculo.valido) return res.status(400).json({ erro: tipoVeiculo.erro });
+
   const existente = await sb('/cargas?select=id&numeroRomaneio=ilike.' + encodeURIComponent(numero.valor));
   if (existente.length) {
     return res.status(409).json({ erro: `Já existe uma carga com o número de romaneio ${numero.valor}.` });
@@ -286,6 +297,7 @@ app.post('/api/cargas', rota(async (req, res) => {
       numeroRomaneio: numero.valor,
       dataPedido: data.valor,
       status: status.valor,
+      tipoVeiculo: tipoVeiculo.valor || null,
       observacoes: (body.observacoes || '').toString().trim(),
       dataDespacho: null,
       criadoEm: agoraStr,
@@ -345,6 +357,16 @@ app.put('/api/cargas/:id', rota(async (req, res) => {
       eventos.push(['observacoes', String(carga.observacoes || ''), obs, 'Observações alteradas']);
     }
     updates.observacoes = obs;
+  }
+
+  if (body.tipoVeiculo !== undefined) {
+    const tipoVeiculo = normalizarTipoVeiculo(body.tipoVeiculo);
+    if (!tipoVeiculo.valido) return res.status(400).json({ erro: tipoVeiculo.erro });
+    const anterior = String(carga.tipoVeiculo || '');
+    if (tipoVeiculo.valor !== anterior) {
+      eventos.push(['tipoVeiculo', anterior, tipoVeiculo.valor, 'Tipo de veículo alterado']);
+    }
+    updates.tipoVeiculo = tipoVeiculo.valor || null;
   }
 
   let atualizada = carga;
