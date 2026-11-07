@@ -5,6 +5,7 @@ const state = {
   fila: [],
   despachados: [],
   historico: [],
+  selecionadas: new Set(),
   est: { total: 0, ativas: 0, despachadas: 0 },
 };
 
@@ -101,13 +102,27 @@ function renderFila() {
   const tbody = document.getElementById('fila-tbody');
   const vazio = document.getElementById('fila-vazio');
   const empty = state.fila.length === 0;
+  const idsAtivos = new Set(state.fila.map((f) => String(f.id)));
+  state.selecionadas = new Set([...state.selecionadas].filter((id) => idsAtivos.has(id)));
   tbody.innerHTML = '';
   vazio.style.display = empty ? 'block' : 'none';
 
   state.fila.forEach((f) => {
     const pos = f.posicao;
+    const idStr = String(f.id);
+    const selecionada = state.selecionadas.has(idStr);
     const classeLinha = pos === 1 ? 'row-pos-1' : pos === 2 ? 'row-pos-2' : pos === 3 ? 'row-pos-3' : 'row-pos-4';
     const corBadge = pos === 1 ? '#dc2626' : pos === 2 ? '#ea580c' : pos === 3 ? '#ca8a04' : '#059669';
+
+    const tdCheck = document.createElement('td');
+    tdCheck.className = 'col-check';
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.className = 'check-carga';
+    check.dataset.id = idStr;
+    check.checked = selecionada;
+    check.setAttribute('aria-label', 'Selecionar romaneio ' + f.numeroRomaneio);
+    tdCheck.appendChild(check);
 
     const tdPos = document.createElement('td');
     const spanPos = document.createElement('span');
@@ -150,10 +165,12 @@ function renderFila() {
     tdAcoes.append(btn, btnExcluir);
 
     const tr = document.createElement('tr');
-    tr.className = classeLinha;
-    tr.append(tdPos, tdNum, tdVeiculo, tdData, tdObs, tdStatus, tdAcoes);
+    tr.className = classeLinha + (selecionada ? ' row-selecionada' : '');
+    tr.append(tdCheck, tdPos, tdNum, tdVeiculo, tdData, tdObs, tdStatus, tdAcoes);
     tbody.appendChild(tr);
   });
+
+  atualizarBarraSelecao();
 
   const statFila = document.getElementById('stat-fila');
   const statPrimaria = document.getElementById('stat-primaria');
@@ -432,6 +449,78 @@ async function abrirRelatorio() {
   }
 }
 
+// ------------------------------ Sequência de montagem ------------------------------
+
+function atualizarBarraSelecao() {
+  const total = state.fila.length;
+  const n = state.selecionadas.size;
+  const contador = document.getElementById('seq-contador');
+  const btn = document.getElementById('btn-imprimir-selecionadas');
+  const todos = document.getElementById('check-todos');
+
+  if (contador) contador.textContent = `${n} ${n === 1 ? 'carga selecionada' : 'cargas selecionadas'}`;
+  if (btn) {
+    btn.disabled = n === 0;
+    btn.textContent = `🖨 Imprimir sequência (${n})`;
+  }
+  if (todos) {
+    todos.disabled = total === 0;
+    todos.checked = total > 0 && n === total;
+    todos.indeterminate = n > 0 && n < total;
+  }
+}
+
+function selecionarPrimeiras() {
+  const input = document.getElementById('seq-quantidade');
+  const qtd = Number(input.value);
+  if (!Number.isInteger(qtd) || qtd < 1) {
+    toast('Informe uma quantidade válida de cargas.', 'erro');
+    return;
+  }
+  if (!state.fila.length) {
+    toast('Nenhuma carga ativa na fila.', 'erro');
+    return;
+  }
+  const n = Math.min(qtd, state.fila.length);
+  state.selecionadas = new Set(state.fila.slice(0, n).map((f) => String(f.id)));
+  renderFila();
+  toast(
+    n < qtd ? `Só há ${n} carga(s) ativa(s). Todas foram selecionadas.` : `${n} carga(s) selecionada(s) para a expedição.`,
+    'ok'
+  );
+}
+
+function limparSelecao() {
+  state.selecionadas.clear();
+  renderFila();
+  toast('Seleção limpa.', 'ok');
+}
+
+async function abrirRelatorioSelecionadas() {
+  if (!state.selecionadas.size) {
+    toast('Selecione ao menos uma carga para imprimir.', 'erro');
+    return;
+  }
+  try {
+    const dados = await api('/api/relatorio');
+    const fila = (dados.fila || [])
+      .filter((f) => state.selecionadas.has(String(f.id)))
+      .map((f, i) => ({ ...f, posicao: i + 1 }));
+
+    if (!fila.length) {
+      toast('As cargas selecionadas não estão mais na fila ativa.', 'erro');
+      return;
+    }
+
+    if (window.Relatorio && window.Relatorio.render) {
+      window.Relatorio.render({ ...dados, fila, titulo: 'SEQUÊNCIA DE MONTAGEM – EXPEDIÇÃO' });
+    }
+    window.print();
+  } catch (e) {
+    toast(e.message, 'erro');
+  }
+}
+
 // ------------------------------ Consulta rápida ------------------------------
 
 async function consultarRomaneio() {
@@ -501,6 +590,26 @@ document.getElementById('modal-historico').addEventListener('click', (e) => {
 
 document.getElementById('btn-imprimir-top').addEventListener('click', abrirRelatorio);
 document.getElementById('btn-imprimir-fila').addEventListener('click', abrirRelatorio);
+document.getElementById('btn-imprimir-selecionadas').addEventListener('click', abrirRelatorioSelecionadas);
+document.getElementById('btn-selecionar-qtd').addEventListener('click', selecionarPrimeiras);
+document.getElementById('btn-limpar-selecao').addEventListener('click', limparSelecao);
+
+document.getElementById('check-todos').addEventListener('change', (e) => {
+  state.selecionadas.clear();
+  if (e.target.checked) state.fila.forEach((f) => state.selecionadas.add(String(f.id)));
+  renderFila();
+});
+
+document.getElementById('fila-tbody').addEventListener('change', (e) => {
+  const check = e.target.closest('.check-carga');
+  if (!check) return;
+  const id = String(check.dataset.id);
+  if (check.checked) state.selecionadas.add(id);
+  else state.selecionadas.delete(id);
+  const tr = check.closest('tr');
+  if (tr) tr.classList.toggle('row-selecionada', check.checked);
+  atualizarBarraSelecao();
+});
 
 document.getElementById('form-consulta').addEventListener('submit', (e) => {
   e.preventDefault();

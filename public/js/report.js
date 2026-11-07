@@ -1,8 +1,10 @@
 window.Relatorio = {
   render(dados) {
+    const tituloEl = document.getElementById('report-titulo');
     const datahoraEl = document.getElementById('report-datahora');
     const tbody = document.getElementById('report-corpo');
 
+    if (tituloEl) tituloEl.textContent = (dados && dados.titulo) || 'RELATÓRIO DE PRIORIZAÇÃO DE CARGAS';
     if (datahoraEl) datahoraEl.textContent = (dados && dados.emissao && dados.emissao.dataHora) || '';
 
     tbody.innerHTML = '';

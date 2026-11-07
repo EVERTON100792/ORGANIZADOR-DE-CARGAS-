@@ -63,10 +63,20 @@
             <button id="btn-imprimir-fila" class="btn btn-primary">🖨 Imprimir Fila de Prioridade</button>
           </div>
           <p class="panel-subtitle">Ordenação automática por data do pedido (mais antiga primeiro). Despachadas saem da fila ativa.</p>
+          <div class="seq-bar">
+            <span class="seq-title">Sequência de montagem</span>
+            <label for="seq-quantidade">Quantidade:</label>
+            <input id="seq-quantidade" type="number" min="1" step="1" value="10" inputmode="numeric">
+            <button id="btn-selecionar-qtd" class="btn btn-ghost" type="button">Selecionar primeiras</button>
+            <button id="btn-limpar-selecao" class="btn btn-ghost" type="button">Limpar seleção</button>
+            <span id="seq-contador" class="seq-count">0 cargas selecionadas</span>
+            <button id="btn-imprimir-selecionadas" class="btn btn-primary" type="button" disabled>🖨 Imprimir sequência (0)</button>
+          </div>
           <div class="table-wrapper">
             <table class="table fila-table">
               <thead>
                 <tr>
+                  <th class="col-check"><input type="checkbox" id="check-todos" title="Selecionar todas as cargas" aria-label="Selecionar todas as cargas"></th>
                   <th>Posição</th>
                   <th>Nº Romaneio</th>
                   <th>Veículo</th>
@@ -202,7 +212,7 @@
 
   <div id="print-report" class="print-report">
     <header class="report-header">
-      <h1>RELATÓRIO DE PRIORIZAÇÃO DE CARGAS</h1>
+      <h1 id="report-titulo">RELATÓRIO DE PRIORIZAÇÃO DE CARGAS</h1>
       <div class="report-meta">
         <div>Data e horário da emissão: <span id="report-datahora"></span></div>
       </div>

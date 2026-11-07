@@ -85,8 +85,15 @@ Passos:
 - Ao informar o número, o sistema avisa se já está cadastrado e mostra o status atual (A contratar ou Despachada).
 - Se não existir, oferece o botão "Cadastrar agora" com o número já preenchido, evitando cadastros duplicados.
 
+### 2.2 Sequência de montagem para expedição
+- Selecione uma quantidade de cargas (ex.: as 10 primeiras da fila) ou marque individualmente com os checkboxes.
+- As cargas selecionadas são impressas na mesma ordem de prioridade da fila e renumeradas de 1º a N.
+- O relatório usa o mesmo layout A4, com o título "SEQUÊNCIA DE MONTAGEM – EXPEDIÇÃO".
+- A seleção não altera o status: as cargas continuam "A contratar" até serem despachadas.
+
 ### 3. Painel principal – Fila de prioridade
-- Colunas: Posição, Nº Romaneio, Veículo, Data do Pedido, Observações, Status.
+- Colunas: Seleção, Posição, Nº Romaneio, Veículo, Data do Pedido, Observações, Status.
+- Seleção de cargas para a sequência de montagem da expedição.
 - Cores: vermelho (1º), laranja (2º), amarelo (3º), verde (demais).
 - Cards de estatísticas: cargas na fila, prioridade #1, despachadas, total.
 
