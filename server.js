@@ -25,6 +25,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const REST = SUPABASE_URL + '/rest/v1';
 const STATUS_LIST = ['Montada', 'Aguardando Expedição', 'Liberada', 'Despachada'];
+const TZ = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
 
 // ---------------------------------------------------------------- Cliente Supabase
 
@@ -60,10 +61,27 @@ async function sb(caminho, opcoes = {}) {
 
 // ---------------------------------------------------------------- Utilidades
 
+function partesDataHora(data) {
+  const fmt = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+  const partes = {};
+  fmt.formatToParts(data || new Date()).forEach((p) => {
+    if (p.type !== 'literal') partes[p.type] = p.value;
+  });
+  return partes;
+}
+
 function agora() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  const p = partesDataHora();
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
 }
 
 function hoje() {
@@ -71,9 +89,8 @@ function hoje() {
 }
 
 function dataHoraExibicao() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} às ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const p = partesDataHora();
+  return `${p.day}/${p.month}/${p.year} às ${p.hour}:${p.minute}`;
 }
 
 function compararNumero(a, b) {
@@ -229,6 +246,12 @@ app.get('/api/cargas', rota(async (req, res) => {
 
   const lista = await sb('/cargas?' + qs.join('&'));
   res.json(ordenarCargas(lista));
+}));
+
+app.get('/api/cargas/:id', rota(async (req, res) => {
+  const carga = await obterCarga(Number(req.params.id));
+  if (!carga) return res.status(404).json({ erro: 'Carga não encontrada.' });
+  res.json(carga);
 }));
 
 app.post('/api/cargas', rota(async (req, res) => {

@@ -142,7 +142,12 @@ function renderFila() {
     btn.dataset.id = String(f.id);
     btn.dataset.acao = 'editar';
     btn.textContent = 'Editar';
-    tdAcoes.appendChild(btn);
+    const btnExcluir = document.createElement('button');
+    btnExcluir.className = 'btn btn-ghost btn-acao btn-excluir';
+    btnExcluir.dataset.id = String(f.id);
+    btnExcluir.dataset.acao = 'excluir';
+    btnExcluir.textContent = 'Excluir';
+    tdAcoes.append(btn, btnExcluir);
 
     const tr = document.createElement('tr');
     tr.className = classeLinha;
@@ -206,6 +211,7 @@ async function renderGerenciarComFiltros() {
       sel.appendChild(opt);
     });
     sel.addEventListener('change', () => alterarStatus(Number(c.id), sel.value));
+    tdStatus.appendChild(sel);
 
     const tdDesp = document.createElement('td');
     tdDesp.textContent = formatarData(c.dataDespacho);
@@ -398,6 +404,7 @@ async function alterarStatus(id, status) {
     await recarregarTudo();
   } catch (e) {
     toast(e.message, 'erro');
+    await renderGerenciarComFiltros();
   }
 }
 
@@ -469,10 +476,15 @@ document.getElementById('fila-tbody').addEventListener('click', async (e) => {
   const btn = e.target.closest('.btn-acao');
   if (!btn) return;
   const id = Number(btn.dataset.id);
-  if (btn.dataset.acao !== 'editar') return;
-  const carga = await api('/api/cargas/' + id);
-  document.getElementById('modal-id-carga').value = String(id);
-  abrirModalEditar(carga);
+  try {
+    if (btn.dataset.acao === 'editar') {
+      const carga = await api('/api/cargas/' + id);
+      abrirModalEditar(carga);
+    }
+    if (btn.dataset.acao === 'excluir') await excluirCarga(id);
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
 });
 
 document.getElementById('gerenciar-tbody').addEventListener('click', async (e) => {
@@ -480,19 +492,28 @@ document.getElementById('gerenciar-tbody').addEventListener('click', async (e) =
   if (!btn) return;
   const id = Number(btn.dataset.id);
   const acao = btn.dataset.acao;
-  if (acao === 'editar') {
-    const carga = await api('/api/cargas/' + id);
-    document.getElementById('modal-id-carga').value = String(id);
-    abrirModalEditar(carga);
+  try {
+    if (acao === 'editar') {
+      const carga = await api('/api/cargas/' + id);
+      abrirModalEditar(carga);
+    }
+    if (acao === 'excluir') await excluirCarga(id);
+  } catch (err) {
+    toast(err.message, 'erro');
   }
-  if (acao === 'excluir') await excluirCarga(id);
 });
 
 document.getElementById('despachados-tbody').addEventListener('click', async (e) => {
   const btn = e.target.closest('.btn-acao');
   if (!btn) return;
   const id = Number(btn.dataset.id);
-  if (btn.dataset.acao === 'ver-historico') await abrirModalHistorico(id);
+  if (btn.dataset.acao === 'ver-historico') {
+    try {
+      await abrirModalHistorico(id);
+    } catch (err) {
+      toast(err.message, 'erro');
+    }
+  }
 });
 
 document.getElementById('btn-limpar-filtros').addEventListener('click', async () => {
