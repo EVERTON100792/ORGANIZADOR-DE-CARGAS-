@@ -284,6 +284,19 @@ body {
 
 .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-nova-carga-destaque {
+  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
+  letter-spacing: 0.3px;
+}
+
 .panel-header h2 {
   position: relative;
   margin: 0;
@@ -305,6 +318,103 @@ body {
 }
 
 .panel-subtitle { margin: 8px 0 16px; color: var(--text-muted); font-size: 13px; }
+
+/* ------------------------------ Filtro Rápido por Veículo na Fila ------------------------------ */
+.fila-filtro-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(8, 21, 38, 0.04);
+}
+
+.filtro-rotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--navy-800);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+
+.filtro-rotulo .filtro-icone {
+  color: var(--gold-500);
+  font-size: 14px;
+}
+
+.fila-chips-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.chip-veiculo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.chip-veiculo:hover {
+  border-color: var(--gold-400);
+  background: #fffdf5;
+  color: var(--navy-800);
+}
+
+.chip-veiculo.active {
+  background: linear-gradient(135deg, var(--navy-900) 0%, var(--navy-800) 100%);
+  border-color: var(--gold-400);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(8, 21, 38, 0.20);
+}
+
+.chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #e2e8f0;
+  color: #475569;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.chip-veiculo.active .chip-count {
+  background: var(--gold-400);
+  color: var(--navy-950);
+}
+
+.chip-veiculo.chip-zero {
+  opacity: 0.55;
+}
+
+.chip-veiculo.chip-zero:hover {
+  opacity: 0.85;
+}
 
 /* ------------------------------ Sequência de montagem ------------------------------ */
 .seq-bar {
@@ -616,6 +726,61 @@ body {
 
 .modal-subtitle { font-size: 13px; color: var(--text-muted); margin: 0 0 10px; }
 
+/* ------------------------------ Seleção Rápida de Veículo ------------------------------ */
+.veiculos-pills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 10px;
+}
+
+.select-veiculo-hidden {
+  display: none !important;
+}
+
+.btn-veiculo-pill {
+  flex: 1 1 calc(25% - 6px);
+  min-width: 78px;
+  padding: 8px 6px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  user-select: none;
+}
+
+.btn-veiculo-pill:hover {
+  border-color: var(--gold-400);
+  background: #fffdf5;
+  color: var(--navy-800);
+}
+
+.btn-veiculo-pill.active {
+  background: linear-gradient(135deg, var(--navy-900) 0%, var(--navy-800) 100%);
+  border-color: var(--gold-400);
+  color: var(--gold-400);
+  box-shadow: 0 3px 10px rgba(8, 21, 38, 0.25), inset 0 1px 0 rgba(212, 175, 55, 0.35);
+}
+
+.btn-salvar-novo {
+  margin-right: auto;
+  border: 1.5px dashed #cbd5e1;
+  color: var(--navy-800);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.btn-salvar-novo:hover {
+  background: #f0fdf4;
+  border-color: #059669;
+  color: #059669;
+}
+
 /* ------------------------------ Confirmação de exclusão ------------------------------ */
 .modal-confirm { max-width: 450px; }
 
@@ -779,6 +944,55 @@ body {
 .report-header h1 { margin: 0 0 8px; font-size: 20px; letter-spacing: 1.5px; color: #0b2f57; }
 .report-meta { display: flex; justify-content: center; gap: 60px; flex-wrap: wrap; font-size: 12px; color: #334155; }
 .report-meta div { display: flex; flex-direction: column; }
+
+/* Totais por Tipo de Veículo no Relatório */
+.report-resumo-veiculos {
+  margin: 14px 0 10px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1.5px solid #0b2f57;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.resumo-titulo {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #0b2f57;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.resumo-itens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.resumo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #ffffff;
+  border: 1.5px solid #0b2f57;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #0b2f57;
+}
+
+.resumo-pill .rp-tipo {
+  font-weight: 700;
+}
+
+.resumo-pill .rp-qtd {
+  font-size: 13.5px;
+  font-weight: 900;
+  color: #0b2f57;
+}
 
 .report-table { width: 100%; border-collapse: collapse; margin: 10px 0 20px; }
 .report-table th, .report-table td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; font-size: 12px; }
@@ -1124,6 +1338,9 @@ button:focus-visible, .tab:focus-visible {
   .consulta-resultado { min-width: 100%; }
   .filters input[type="date"], .filters input[type="month"] { min-width: 130px; }
   .filters input[type="text"] { min-width: 140px; }
+  .fila-filtro-bar { gap: 8px; padding: 10px 12px; }
+  .fila-chips-container { gap: 5px; }
+  .chip-veiculo { padding: 5px 10px; font-size: 11px; }
   .seq-bar { gap: 8px; padding: 10px 12px; }
   .seq-title { width: 100%; }
   .seq-count { flex: 1 1 auto; }

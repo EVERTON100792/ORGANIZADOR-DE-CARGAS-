@@ -1,5 +1,27 @@
 const STATUS_LIST = ['A contratar', 'Despachada'];
-const TIPOS_VEICULO = ['Van', 'Fiorino', 'Três Quartos', 'Toco'];
+const TIPOS_VEICULO = ['FIORINO', 'VAN', 'VAN-SP', '3/4', '3/4-SP', 'TOCO', 'TOCO-SP'];
+
+function normalizarNomeVeiculo(valor) {
+  if (!valor) return '';
+  const v = String(valor).trim().toUpperCase();
+  if (v === 'FIORINO' || v.includes('FIORIN')) return 'FIORINO';
+  if (v === 'VAN') return 'VAN';
+  if (v === 'VAN-SP' || v === 'VAN SP') return 'VAN-SP';
+  if (v === '3/4' || v === 'TRES QUARTOS' || v === 'TRÊS QUARTOS') return '3/4';
+  if (v === '3/4-SP' || v === '3/4 SP' || v === 'TRES QUARTOS SP' || v === 'TRÊS QUARTOS SP') return '3/4-SP';
+  if (v === 'TOCO') return 'TOCO';
+  if (v === 'TOCO-SP' || v === 'TOCO SP') return 'TOCO-SP';
+  return valor;
+}
+window.normalizarNomeVeiculo = normalizarNomeVeiculo;
+
+function hojeFormatadoISO() {
+  const hoje = new Date();
+  const y = hoje.getFullYear();
+  const m = String(hoje.getMonth() + 1).padStart(2, '0');
+  const d = String(hoje.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 const state = {
   fila: [],
@@ -9,6 +31,7 @@ const state = {
   est: { total: 0, ativas: 0, despachadas: 0 },
   usuario: null,
   token: null,
+  filtroFilaVeiculo: 'TODOS',
 };
 
 let confirmacaoResolver = null;
@@ -111,16 +134,59 @@ async function recarregarTudo() {
 
 // ------------------------------ Render Fila ------------------------------
 
+function obterFilaVisivel() {
+  if (!state.filtroFilaVeiculo || state.filtroFilaVeiculo === 'TODOS') {
+    return state.fila;
+  }
+  return state.fila.filter((f) => {
+    const norm = normalizarNomeVeiculo(f.tipoVeiculo);
+    return norm === state.filtroFilaVeiculo;
+  });
+}
+
+function atualizarContadoresFiltroFila() {
+  const contagem = { TODOS: state.fila.length };
+  TIPOS_VEICULO.forEach((t) => (contagem[t] = 0));
+  state.fila.forEach((f) => {
+    const norm = normalizarNomeVeiculo(f.tipoVeiculo);
+    if (contagem[norm] !== undefined) {
+      contagem[norm]++;
+    } else if (norm) {
+      contagem[norm] = (contagem[norm] || 0) + 1;
+    }
+  });
+
+  document.querySelectorAll('.chip-veiculo').forEach((btn) => {
+    const tipo = btn.dataset.veiculo || 'TODOS';
+    const badge = btn.querySelector('.chip-count');
+    const qtd = contagem[tipo] || 0;
+    if (badge) badge.textContent = String(qtd);
+    btn.classList.toggle('chip-zero', qtd === 0 && tipo !== 'TODOS');
+    btn.classList.toggle('active', tipo === (state.filtroFilaVeiculo || 'TODOS'));
+  });
+}
+
 function renderFila() {
+  atualizarContadoresFiltroFila();
   const tbody = document.getElementById('fila-tbody');
   const vazio = document.getElementById('fila-vazio');
-  const empty = state.fila.length === 0;
+  const filaVisivel = obterFilaVisivel();
+  const empty = filaVisivel.length === 0;
   const idsAtivos = new Set(state.fila.map((f) => String(f.id)));
   state.selecionadas = new Set([...state.selecionadas].filter((id) => idsAtivos.has(id)));
   tbody.innerHTML = '';
-  vazio.style.display = empty ? 'block' : 'none';
 
-  state.fila.forEach((f) => {
+  if (empty) {
+    vazio.style.display = 'block';
+    vazio.textContent =
+      state.filtroFilaVeiculo && state.filtroFilaVeiculo !== 'TODOS'
+        ? `Nenhuma carga ativa com o veículo "${state.filtroFilaVeiculo}" na fila de prioridades.`
+        : 'Nenhuma carga ativa na fila de prioridades.';
+  } else {
+    vazio.style.display = 'none';
+  }
+
+  filaVisivel.forEach((f) => {
     const pos = f.posicao;
     const idStr = String(f.id);
     const selecionada = state.selecionadas.has(idStr);
@@ -150,7 +216,7 @@ function renderFila() {
     tdNum.appendChild(strong);
 
     const tdVeiculo = document.createElement('td');
-    tdVeiculo.textContent = f.tipoVeiculo || '–';
+    tdVeiculo.textContent = normalizarNomeVeiculo(f.tipoVeiculo) || '–';
 
     const tdData = document.createElement('td');
     tdData.textContent = formatarData(f.dataPedido);
@@ -235,7 +301,7 @@ async function renderGerenciarComFiltros() {
     tdNum.appendChild(strong);
 
     const tdVeiculo = document.createElement('td');
-    tdVeiculo.textContent = c.tipoVeiculo || '–';
+    tdVeiculo.textContent = normalizarNomeVeiculo(c.tipoVeiculo) || '–';
 
     const tdData = document.createElement('td');
     tdData.textContent = formatarData(c.dataPedido);
@@ -294,7 +360,7 @@ function renderDespachados() {
     tdNum.appendChild(strong);
 
     const tdVeiculo = document.createElement('td');
-    tdVeiculo.textContent = c.tipoVeiculo || '–';
+    tdVeiculo.textContent = normalizarNomeVeiculo(c.tipoVeiculo) || '–';
 
     const tdData = document.createElement('td');
     tdData.textContent = formatarData(c.dataPedido);
@@ -350,15 +416,27 @@ function renderHistorico() {
 
 // ------------------------------ Modal Carga ------------------------------
 
+function selecionarPillVeiculo(tipo) {
+  const norm = normalizarNomeVeiculo(tipo);
+  document.querySelectorAll('.btn-veiculo-pill').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tipo === norm);
+  });
+  const sel = document.getElementById('campo-tipoVeiculo');
+  if (sel) sel.value = norm || '';
+}
+
 function abrirModalCriar() {
   document.getElementById('modal-titulo').textContent = 'Nova Carga';
   document.getElementById('modal-id-carga').value = '';
   document.getElementById('campo-romaneio').value = '';
-  document.getElementById('campo-dataPedido').value = '';
-  document.getElementById('campo-tipoVeiculo').value = '';
+  document.getElementById('campo-dataPedido').value = hojeFormatadoISO();
+  selecionarPillVeiculo('');
   document.getElementById('campo-status').value = 'A contratar';
   document.getElementById('campo-observacoes').value = '';
+  const btnSalvarNovo = document.getElementById('btn-salvar-novo');
+  if (btnSalvarNovo) btnSalvarNovo.style.display = 'inline-flex';
   document.getElementById('modal-carga').classList.add('open');
+  setTimeout(() => document.getElementById('campo-romaneio')?.focus(), 80);
 }
 
 function abrirModalEditar(carga) {
@@ -366,17 +444,20 @@ function abrirModalEditar(carga) {
   document.getElementById('modal-id-carga').value = String(carga.id);
   document.getElementById('campo-romaneio').value = carga.numeroRomaneio;
   document.getElementById('campo-dataPedido').value = String(carga.dataPedido || '').slice(0, 10);
-  document.getElementById('campo-tipoVeiculo').value = carga.tipoVeiculo || '';
+  selecionarPillVeiculo(carga.tipoVeiculo || '');
   document.getElementById('campo-status').value = carga.status;
   document.getElementById('campo-observacoes').value = carga.observacoes || '';
+  const btnSalvarNovo = document.getElementById('btn-salvar-novo');
+  if (btnSalvarNovo) btnSalvarNovo.style.display = 'none';
   document.getElementById('modal-carga').classList.add('open');
+  setTimeout(() => document.getElementById('campo-romaneio')?.focus(), 80);
 }
 
 function fecharModal() {
   document.getElementById('modal-carga').classList.remove('open');
 }
 
-async function salvarCarga() {
+async function salvarCarga(fechar = true) {
   const numero = document.getElementById('campo-romaneio').value.trim();
   const dataPedido = document.getElementById('campo-dataPedido').value;
   const tipoVeiculo = document.getElementById('campo-tipoVeiculo').value;
@@ -389,7 +470,7 @@ async function salvarCarga() {
   }
 
   if (!tipoVeiculo) {
-    toast('Selecione o tipo de veículo.', 'erro');
+    toast('Selecione o tipo de veículo clicando em uma das opções.', 'erro');
     return;
   }
 
@@ -403,8 +484,17 @@ async function salvarCarga() {
       await api('/api/cargas/' + id, 'PUT', body);
       toast('Carga atualizada com sucesso!', 'ok');
     }
-    fecharModal();
     await recarregarTudo();
+    if (fechar) {
+      fecharModal();
+    } else {
+      document.getElementById('modal-id-carga').value = '';
+      document.getElementById('campo-romaneio').value = '';
+      document.getElementById('campo-observacoes').value = '';
+      const campoRom = document.getElementById('campo-romaneio');
+      if (campoRom) campoRom.focus();
+      toast('Carga cadastrada! Digite o próximo romaneio.', 'ok');
+    }
   } catch (e) {
     toast(e.message, 'erro');
   }
@@ -493,6 +583,10 @@ async function alterarStatus(id, status) {
 async function abrirRelatorio() {
   try {
     const dados = await api('/api/relatorio');
+    if (state.filtroFilaVeiculo && state.filtroFilaVeiculo !== 'TODOS') {
+      dados.fila = (dados.fila || []).filter((f) => normalizarNomeVeiculo(f.tipoVeiculo) === state.filtroFilaVeiculo);
+      dados.titulo = `RELATÓRIO DE PRIORIZAÇÃO DE CARGAS - VEÍCULO: ${state.filtroFilaVeiculo}`;
+    }
     if (window.Relatorio && window.Relatorio.render) window.Relatorio.render(dados);
     window.print();
   } catch (e) {
@@ -503,14 +597,22 @@ async function abrirRelatorio() {
 // ------------------------------ Sequência de montagem ------------------------------
 
 function atualizarBarraSelecao() {
-  const total = state.fila.length;
+  const visiveis = obterFilaVisivel();
+  const totalVisiveis = visiveis.length;
   const n = state.selecionadas.size;
+  const nVisiveisSelecionadas = visiveis.filter((f) => state.selecionadas.has(String(f.id))).length;
   const contador = document.getElementById('seq-contador');
   const btn = document.getElementById('btn-imprimir-selecionadas');
   const btnDespachar = document.getElementById('btn-despachar-selecionadas');
   const todos = document.getElementById('check-todos');
 
-  if (contador) contador.textContent = `${n} ${n === 1 ? 'carga selecionada' : 'cargas selecionadas'}`;
+  if (contador) {
+    if (state.filtroFilaVeiculo && state.filtroFilaVeiculo !== 'TODOS') {
+      contador.textContent = `${n} ${n === 1 ? 'carga selecionada' : 'cargas selecionadas'} (${totalVisiveis} ${state.filtroFilaVeiculo} na fila)`;
+    } else {
+      contador.textContent = `${n} ${n === 1 ? 'carga selecionada' : 'cargas selecionadas'}`;
+    }
+  }
   if (btn) {
     btn.disabled = n === 0;
     btn.textContent = `🖨 Imprimir sequência (${n})`;
@@ -520,9 +622,9 @@ function atualizarBarraSelecao() {
     btnDespachar.textContent = `✓ Despachar selecionadas (${n})`;
   }
   if (todos) {
-    todos.disabled = total === 0;
-    todos.checked = total > 0 && n === total;
-    todos.indeterminate = n > 0 && n < total;
+    todos.disabled = totalVisiveis === 0;
+    todos.checked = totalVisiveis > 0 && nVisiveisSelecionadas === totalVisiveis;
+    todos.indeterminate = nVisiveisSelecionadas > 0 && nVisiveisSelecionadas < totalVisiveis;
   }
 }
 
@@ -533,15 +635,19 @@ function selecionarPrimeiras() {
     toast('Informe uma quantidade válida de cargas.', 'erro');
     return;
   }
-  if (!state.fila.length) {
-    toast('Nenhuma carga ativa na fila.', 'erro');
+  const visiveis = obterFilaVisivel();
+  if (!visiveis.length) {
+    toast('Nenhuma carga ativa encontrada na fila para o filtro selecionado.', 'erro');
     return;
   }
-  const n = Math.min(qtd, state.fila.length);
-  state.selecionadas = new Set(state.fila.slice(0, n).map((f) => String(f.id)));
+  const n = Math.min(qtd, visiveis.length);
+  visiveis.slice(0, n).forEach((f) => state.selecionadas.add(String(f.id)));
   renderFila();
+  const filtroNome = state.filtroFilaVeiculo && state.filtroFilaVeiculo !== 'TODOS' ? ` de ${state.filtroFilaVeiculo}` : '';
   toast(
-    n < qtd ? `Só há ${n} carga(s) ativa(s). Todas foram selecionadas.` : `${n} carga(s) selecionada(s) para a expedição.`,
+    n < qtd
+      ? `Só há ${n} carga(s) disponível(is)${filtroNome}. Todas foram selecionadas.`
+      : `${n} primeira(s) carga(s)${filtroNome} selecionada(s) para a expedição.`,
     'ok'
   );
 }
@@ -670,9 +776,19 @@ async function destacarCargaNaFila(carga) {
 
   const alvo = state.fila[indice];
   const idAlvo = String(alvo.id);
-  const linha = Array.from(document.querySelectorAll('#fila-tbody tr')).find(
+  let linha = Array.from(document.querySelectorAll('#fila-tbody tr')).find(
     (tr) => tr.dataset.id === idAlvo
   );
+  if (!linha && state.filtroFilaVeiculo !== 'TODOS') {
+    state.filtroFilaVeiculo = 'TODOS';
+    document.querySelectorAll('.chip-veiculo').forEach((c) => {
+      c.classList.toggle('active', c.dataset.veiculo === 'TODOS');
+    });
+    renderFila();
+    linha = Array.from(document.querySelectorAll('#fila-tbody tr')).find(
+      (tr) => tr.dataset.id === idAlvo
+    );
+  }
   if (!linha) return null;
 
   if (destaqueTimer) {
@@ -757,13 +873,39 @@ async function consultarRomaneio() {
 
 // ------------------------------ Eventos ------------------------------
 
-document.getElementById('btn-nova-carga').addEventListener('click', abrirModalCriar);
-document.getElementById('btn-nova-carga-2').addEventListener('click', abrirModalCriar);
-document.getElementById('btn-fechar-modal').addEventListener('click', fecharModal);
-document.getElementById('btn-cancelar').addEventListener('click', fecharModal);
-document.getElementById('btn-salvar').addEventListener('click', salvarCarga);
-document.getElementById('btn-fechar-modal-hist').addEventListener('click', () => document.getElementById('modal-historico').classList.remove('open'));
-document.getElementById('btn-fechar-modal-hist-2').addEventListener('click', () => document.getElementById('modal-historico').classList.remove('open'));
+document.getElementById('btn-nova-carga')?.addEventListener('click', abrirModalCriar);
+document.getElementById('btn-nova-carga-2')?.addEventListener('click', abrirModalCriar);
+document.getElementById('btn-nova-carga-fila')?.addEventListener('click', abrirModalCriar);
+document.getElementById('btn-fechar-modal')?.addEventListener('click', fecharModal);
+document.getElementById('btn-cancelar')?.addEventListener('click', fecharModal);
+document.getElementById('btn-salvar')?.addEventListener('click', () => salvarCarga(true));
+document.getElementById('btn-salvar-novo')?.addEventListener('click', () => salvarCarga(false));
+
+// Seleção rápida de veículos pelos botões
+document.querySelectorAll('.btn-veiculo-pill').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    selecionarPillVeiculo(btn.dataset.tipo);
+  });
+});
+document.getElementById('campo-tipoVeiculo')?.addEventListener('change', (e) => {
+  selecionarPillVeiculo(e.target.value);
+});
+
+// Pressionar Enter no campo romaneio para salvar rapidamente e passar para o próximo
+document.getElementById('campo-romaneio')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const veiculo = document.getElementById('campo-tipoVeiculo')?.value;
+    if (veiculo) {
+      salvarCarga(false);
+    } else {
+      toast('Selecione o veículo acima antes de avançar.', 'erro');
+    }
+  }
+});
+
+document.getElementById('btn-fechar-modal-hist')?.addEventListener('click', () => document.getElementById('modal-historico').classList.remove('open'));
+document.getElementById('btn-fechar-modal-hist-2')?.addEventListener('click', () => document.getElementById('modal-historico').classList.remove('open'));
 
 document.getElementById('modal-carga').addEventListener('click', (e) => {
   if (e.target === document.getElementById('modal-carga')) fecharModal();
@@ -791,9 +933,24 @@ document.getElementById('btn-despachar-selecionadas').addEventListener('click', 
 document.getElementById('btn-selecionar-qtd').addEventListener('click', selecionarPrimeiras);
 document.getElementById('btn-limpar-selecao').addEventListener('click', limparSelecao);
 
-document.getElementById('check-todos').addEventListener('change', (e) => {
-  state.selecionadas.clear();
-  if (e.target.checked) state.fila.forEach((f) => state.selecionadas.add(String(f.id)));
+// Filtro rápido de veículos na fila de prioridade
+document.querySelectorAll('.chip-veiculo').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.filtroFilaVeiculo = btn.dataset.veiculo || 'TODOS';
+    document.querySelectorAll('.chip-veiculo').forEach((c) => {
+      c.classList.toggle('active', c.dataset.veiculo === state.filtroFilaVeiculo);
+    });
+    renderFila();
+  });
+});
+
+document.getElementById('check-todos')?.addEventListener('change', (e) => {
+  const visiveis = obterFilaVisivel();
+  if (e.target.checked) {
+    visiveis.forEach((f) => state.selecionadas.add(String(f.id)));
+  } else {
+    visiveis.forEach((f) => state.selecionadas.delete(String(f.id)));
+  }
   renderFila();
 });
 

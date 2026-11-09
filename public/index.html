@@ -150,10 +150,47 @@
 
         <div class="panel">
           <div class="panel-header">
-            <h2>Fila de Prioridade de Saída</h2>
-            <button id="btn-imprimir-fila" class="btn btn-primary">🖨 Imprimir Fila de Prioridade</button>
+            <div>
+              <h2>Fila de Prioridade de Saída</h2>
+              <p class="panel-subtitle">Ordenação automática por data do pedido (mais antiga primeiro). Despachadas saem da fila ativa.</p>
+            </div>
+            <div class="panel-header-actions">
+              <button id="btn-nova-carga-fila" class="btn btn-primary btn-nova-carga-destaque" type="button">＋ Cadastrar Nova Carga</button>
+              <button id="btn-imprimir-fila" class="btn btn-ghost" type="button">🖨 Imprimir Fila de Prioridade</button>
+            </div>
           </div>
-          <p class="panel-subtitle">Ordenação automática por data do pedido (mais antiga primeiro). Despachadas saem da fila ativa.</p>
+          <div class="fila-filtro-bar" id="fila-filtro-bar">
+            <div class="filtro-rotulo">
+              <span class="filtro-icone">⚡</span>
+              <span>Filtrar por Veículo:</span>
+            </div>
+            <div class="fila-chips-container" id="fila-chips-veiculos">
+              <button type="button" class="chip-veiculo active" data-veiculo="TODOS">
+                Todos <span class="chip-count" id="count-veiculo-todos">0</span>
+              </button>
+              <button type="button" class="chip-veiculo" data-veiculo="FIORINO">
+                FIORINO <span class="chip-count" id="count-veiculo-fiorino">0</span>
+              </button>
+              <button type="button" class="chip-veiculo" data-veiculo="VAN">
+                VAN <span class="chip-count" id="count-veiculo-van">0</span>
+              </button>
+              <button type="button" class="chip-veiculo" data-veiculo="VAN-SP">
+                VAN-SP <span class="chip-count" id="count-veiculo-van-sp">0</span>
+              </button>
+              <button type="button" class="chip-veiculo" data-veiculo="3/4">
+                3/4 <span class="chip-count" id="count-veiculo-34">0</span>
+              </button>
+              <button type="button" class="chip-veiculo" data-veiculo="3/4-SP">
+                3/4-SP <span class="chip-count" id="count-veiculo-34-sp">0</span>
+              </button>
+              <button type="button" class="chip-veiculo" data-veiculo="TOCO">
+                TOCO <span class="chip-count" id="count-veiculo-toco">0</span>
+              </button>
+              <button type="button" class="chip-veiculo" data-veiculo="TOCO-SP">
+                TOCO-SP <span class="chip-count" id="count-veiculo-toco-sp">0</span>
+              </button>
+            </div>
+          </div>
           <div class="seq-bar">
             <span class="seq-title">Sequência de montagem</span>
             <label for="seq-quantidade">Quantidade:</label>
@@ -269,19 +306,33 @@
       <div class="modal-body">
         <input type="hidden" id="modal-id-carga" value="">
         <label for="campo-romaneio">Número do Romaneio *</label>
-        <input id="campo-romaneio" type="text" placeholder="Ex.: 8521">
+        <input id="campo-romaneio" type="text" placeholder="Ex.: 8521" autocomplete="off">
+        
         <label for="campo-dataPedido">Data do Pedido *</label>
         <input id="campo-dataPedido" type="date">
-        <label for="campo-tipoVeiculo">Tipo de Veículo *</label>
-        <select id="campo-tipoVeiculo"></select>
+        
+        <label>Tipo de Veículo *</label>
+        <div class="veiculos-pills-container" id="veiculos-pills">
+          <button type="button" class="btn-veiculo-pill" data-tipo="FIORINO">FIORINO</button>
+          <button type="button" class="btn-veiculo-pill" data-tipo="VAN">VAN</button>
+          <button type="button" class="btn-veiculo-pill" data-tipo="VAN-SP">VAN-SP</button>
+          <button type="button" class="btn-veiculo-pill" data-tipo="3/4">3/4</button>
+          <button type="button" class="btn-veiculo-pill" data-tipo="3/4-SP">3/4-SP</button>
+          <button type="button" class="btn-veiculo-pill" data-tipo="TOCO">TOCO</button>
+          <button type="button" class="btn-veiculo-pill" data-tipo="TOCO-SP">TOCO-SP</button>
+        </div>
+        <select id="campo-tipoVeiculo" class="select-veiculo-hidden"></select>
+        
         <label for="campo-status">Status</label>
         <select id="campo-status"></select>
+        
         <label for="campo-observacoes">Observações</label>
-        <textarea id="campo-observacoes" rows="3" placeholder="Observações da carga"></textarea>
+        <textarea id="campo-observacoes" rows="2" placeholder="Observações da carga (opcional)"></textarea>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" id="btn-cancelar">Cancelar</button>
-        <button class="btn btn-primary" id="btn-salvar">Salvar</button>
+        <button class="btn btn-ghost btn-salvar-novo" id="btn-salvar-novo" type="button" title="Salva esta carga e mantém o formulário aberto para cadastrar a próxima com rapidez">＋ Salvar e Adicionar Outra</button>
+        <button class="btn btn-primary" id="btn-salvar">Salvar Carga</button>
       </div>
     </div>
   </div>
@@ -337,7 +388,9 @@
       <h1 id="report-titulo">RELATÓRIO DE PRIORIZAÇÃO DE CARGAS</h1>
       <div class="report-meta">
         <div>Data e horário da emissão: <span id="report-datahora"></span></div>
+        <div>Total de cargas: <strong id="report-total-cargas">0</strong></div>
       </div>
+      <div id="report-resumo-veiculos" class="report-resumo-veiculos"></div>
     </header>
     <table class="report-table">
       <thead>

@@ -27,7 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const REST = SUPABASE_URL + '/rest/v1';
 const STATUS_LIST = ['A contratar', 'Despachada'];
-const TIPOS_VEICULO = ['Van', 'Fiorino', 'Três Quartos', 'Toco'];
+const TIPOS_VEICULO = ['FIORINO', 'VAN', 'VAN-SP', '3/4', '3/4-SP', 'TOCO', 'TOCO-SP'];
 const TZ = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
 
 // ---------------------------------------------------------------- Cliente Supabase
@@ -137,11 +137,28 @@ function normalizarStatus(valor) {
   return { valido: true, valor: status };
 }
 
+function normalizarNomeVeiculo(valor) {
+  const v = (valor || '').toString().trim();
+  if (!v) return '';
+  const up = v.toUpperCase();
+  if (up === 'FIORINO' || up === 'FIORIONO') return 'FIORINO';
+  if (up === 'VAN') return 'VAN';
+  if (up === 'VAN-SP' || up === 'VAN SP' || up === 'VANSP') return 'VAN-SP';
+  if (up === '3/4' || up === '3/4 VEICULO' || up === 'TRES QUARTOS' || up === 'TRÊS QUARTOS') return '3/4';
+  if (up === '3/4-SP' || up === '3/4 SP' || up === 'TRES QUARTOS SP' || up === 'TRÊS QUARTOS SP') return '3/4-SP';
+  if (up === 'TOCO') return 'TOCO';
+  if (up === 'TOCO-SP' || up === 'TOCO SP' || up === 'TOCOSP') return 'TOCO-SP';
+  return v;
+}
+
 function normalizarTipoVeiculo(valor) {
   const v = (valor || '').toString().trim();
   if (!v) return { valido: true, valor: '' };
-  if (!TIPOS_VEICULO.includes(v)) return { valido: false, erro: 'Selecione um tipo de veículo válido.' };
-  return { valido: true, valor: v };
+  const norm = normalizarNomeVeiculo(v);
+  if (!TIPOS_VEICULO.includes(norm)) {
+    return { valido: false, erro: 'Selecione um tipo de veículo válido: ' + TIPOS_VEICULO.join(', ') };
+  }
+  return { valido: true, valor: norm };
 }
 
 function validarRomaneio(valor) {
