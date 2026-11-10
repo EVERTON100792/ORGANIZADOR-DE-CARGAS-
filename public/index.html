@@ -191,6 +191,21 @@
               </button>
             </div>
           </div>
+          <!-- Barra de Despacho Rápido (Bipador + Colar Lista) -->
+          <div class="despacho-rapido-bar" id="despacho-rapido-bar">
+            <div class="bipador-group">
+              <span class="bipador-label">⚡ Despacho Rápido:</span>
+              <div class="bipador-input-wrap">
+                <input id="input-bipar-romaneio" type="text" placeholder="Digite o romaneio e tecle Enter para marcar..." autocomplete="off" inputmode="numeric">
+                <button id="btn-bipar-romaneio" class="btn btn-primary btn-bipar" type="button" title="Marcar este romaneio na fila">Marcar</button>
+              </div>
+            </div>
+            <div class="lote-group">
+              <button id="btn-abrir-colar-lote" class="btn btn-ghost btn-colar-lote" type="button" title="Colar vários romaneios de uma vez só para marcar ou despachar">
+                📋 Colar Lista de Romaneios
+              </button>
+            </div>
+          </div>
           <div class="seq-bar">
             <span class="seq-title">Sequência de montagem</span>
             <label for="seq-quantidade">Quantidade:</label>
@@ -377,6 +392,30 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" id="btn-cancelar-confirmacao">Cancelar</button>
         <button class="btn btn-danger" id="btn-confirmar-exclusao">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Colar Lista de Romaneios em Lote -->
+  <div id="modal-colar-lote" class="modal-overlay" aria-hidden="true">
+    <div class="modal modal-lote" role="dialog" aria-modal="true" aria-labelledby="lote-titulo">
+      <div class="modal-header">
+        <h3 id="lote-titulo">📋 Colar Romaneios para Despacho em Lote</h3>
+        <button class="modal-close" id="btn-fechar-colar-lote" title="Fechar">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-subtitle">
+          Cole a lista dos romaneios contratados (copiados do WhatsApp, Excel ou bloco de notas). Pode colar separados por quebra de linha, vírgula ou espaço.
+        </p>
+        <label for="textarea-colar-lote">Romaneios:</label>
+        <textarea id="textarea-colar-lote" rows="7" placeholder="Exemplo:&#10;273453&#10;273278&#10;273279, 273277"></textarea>
+        
+        <div id="feedback-colar-lote" class="feedback-lote" style="display: none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-cancelar-colar-lote" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="btn-marcar-lote" type="button">✓ Selecionar na Fila</button>
+        <button class="btn btn-success" id="btn-despachar-lote" type="button">🚀 Despachar Todos Agora</button>
       </div>
     </div>
   </div>

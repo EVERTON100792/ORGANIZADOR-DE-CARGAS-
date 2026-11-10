@@ -416,6 +416,96 @@ body {
   opacity: 0.85;
 }
 
+/* ------------------------------ Barra de Despacho Rápido (Bipador / Lote) ------------------------------ */
+.despacho-rapido-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin: 0 0 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(8, 21, 38, 0.04);
+}
+
+.bipador-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.bipador-label {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--navy-800);
+  white-space: nowrap;
+}
+
+.bipador-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 250px;
+  max-width: 480px;
+}
+
+#input-bipar-romaneio {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--navy-900);
+  background: #ffffff;
+  transition: all 0.15s ease;
+}
+
+#input-bipar-romaneio:focus {
+  outline: none;
+  border-color: var(--gold-400);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.22);
+  background: #fffdfa;
+}
+
+.btn-bipar {
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.btn-colar-lote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1.5px dashed #0b2f57 !important;
+  background: #ffffff !important;
+  color: #0b2f57 !important;
+  font-size: 12.5px;
+  font-weight: 700;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-colar-lote:hover {
+  background: #f0fdf4 !important;
+  border-color: #059669 !important;
+  color: #059669 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.15);
+}
+
 /* ------------------------------ Sequência de montagem ------------------------------ */
 .seq-bar {
   display: flex;
@@ -779,6 +869,59 @@ body {
   background: #f0fdf4;
   border-color: #059669;
   color: #059669;
+}
+
+/* Modal Colar Lista de Romaneios */
+.modal-lote {
+  max-width: 520px;
+}
+
+#textarea-colar-lote {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  font-size: 13.5px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  resize: vertical;
+  min-height: 120px;
+  background: #f8fafc;
+  color: var(--navy-900);
+  font-weight: 600;
+}
+
+#textarea-colar-lote:focus {
+  outline: none;
+  border-color: var(--gold-400);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.22);
+  background: #ffffff;
+}
+
+.feedback-lote {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.feedback-lote.sucesso {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.feedback-lote.aviso {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.feedback-lote.erro {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
 }
 
 /* ------------------------------ Confirmação de exclusão ------------------------------ */
@@ -1341,6 +1484,11 @@ button:focus-visible, .tab:focus-visible {
   .fila-filtro-bar { gap: 8px; padding: 10px 12px; }
   .fila-chips-container { gap: 5px; }
   .chip-veiculo { padding: 5px 10px; font-size: 11px; }
+  .despacho-rapido-bar { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; }
+  .bipador-group { width: 100%; flex-direction: column; align-items: stretch; }
+  .bipador-input-wrap { width: 100%; min-width: 0; max-width: none; }
+  .lote-group { width: 100%; }
+  .btn-colar-lote { width: 100%; justify-content: center; }
   .seq-bar { gap: 8px; padding: 10px 12px; }
   .seq-title { width: 100%; }
   .seq-count { flex: 1 1 auto; }

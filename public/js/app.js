@@ -737,6 +737,206 @@ async function despacharSelecionadas() {
   }
 }
 
+// ------------------------------ Despacho Rápido: Bipador e Lote ------------------------------
+
+function processarBipadorRomaneio() {
+  const input = document.getElementById('input-bipar-romaneio');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+
+  const numBusca = val.toLowerCase();
+  const cargaAtiva = state.fila.find(
+    (f) => String(f.numeroRomaneio || '').trim().toLowerCase() === numBusca
+  );
+
+  if (cargaAtiva) {
+    const idStr = String(cargaAtiva.id);
+    if (state.selecionadas.has(idStr)) {
+      toast(`ℹ Romaneio ${cargaAtiva.numeroRomaneio} já está selecionado.`, 'ok');
+    } else {
+      state.selecionadas.add(idStr);
+      renderFila();
+      const tr = Array.from(document.querySelectorAll('#fila-tbody tr')).find(
+        (linha) => linha.dataset.id === idStr
+      );
+      if (tr) {
+        tr.classList.remove('row-destacada');
+        void tr.offsetWidth;
+        tr.classList.add('row-destacada');
+        tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      toast(`✓ Romaneio ${cargaAtiva.numeroRomaneio} selecionado! (${state.selecionadas.size} selecionadas)`, 'ok');
+    }
+    input.value = '';
+    input.focus();
+    return;
+  }
+
+  const cargaDespachada = state.despachados.find(
+    (c) => String(c.numeroRomaneio || '').trim().toLowerCase() === numBusca
+  );
+  if (cargaDespachada) {
+    toast(`⚠️ Romaneio ${cargaDespachada.numeroRomaneio} já foi DESPACHADO anteriormente.`, 'erro');
+  } else {
+    toast(`❌ Romaneio "${val}" não foi encontrado na fila ativa.`, 'erro');
+  }
+  input.value = '';
+  input.focus();
+}
+
+function abrirModalColarLote() {
+  const modal = document.getElementById('modal-colar-lote');
+  const txt = document.getElementById('textarea-colar-lote');
+  const fb = document.getElementById('feedback-colar-lote');
+  if (txt) txt.value = '';
+  if (fb) {
+    fb.style.display = 'none';
+    fb.className = 'feedback-lote';
+    fb.innerHTML = '';
+  }
+  if (modal) modal.classList.add('open');
+  setTimeout(() => txt?.focus(), 80);
+}
+
+function fecharModalColarLote() {
+  const modal = document.getElementById('modal-colar-lote');
+  if (modal) modal.classList.remove('open');
+}
+
+function extrairRomaneiosDeTexto(texto) {
+  if (!texto) return [];
+  const tokens = texto
+    .split(/[\r\n,;\t\s]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+  return Array.from(new Set(tokens));
+}
+
+function processarMarcarLote() {
+  const txt = document.getElementById('textarea-colar-lote')?.value || '';
+  const romaneios = extrairRomaneiosDeTexto(txt);
+
+  if (!romaneios.length) {
+    toast('Cole ao menos um número de romaneio no campo.', 'erro');
+    return;
+  }
+
+  const encontrados = [];
+  const jaDespachados = [];
+  const naoEncontrados = [];
+
+  romaneios.forEach((num) => {
+    const numLower = num.toLowerCase();
+    const naFila = state.fila.find(
+      (f) => String(f.numeroRomaneio || '').trim().toLowerCase() === numLower
+    );
+    if (naFila) {
+      encontrados.push(naFila);
+    } else {
+      const desp = state.despachados.find(
+        (c) => String(c.numeroRomaneio || '').trim().toLowerCase() === numLower
+      );
+      if (desp) jaDespachados.push(num);
+      else naoEncontrados.push(num);
+    }
+  });
+
+  if (encontrados.length > 0) {
+    encontrados.forEach((f) => state.selecionadas.add(String(f.id)));
+    renderFila();
+    fecharModalColarLote();
+
+    let msg = `✓ ${encontrados.length} carga(s) selecionada(s) na fila!`;
+    if (jaDespachados.length > 0) {
+      msg += ` (${jaDespachados.length} já despachada(s))`;
+    }
+    if (naoEncontrados.length > 0) {
+      msg += ` (${naoEncontrados.length} não encontrada(s))`;
+    }
+    toast(msg, 'ok');
+  } else {
+    const fb = document.getElementById('feedback-colar-lote');
+    if (fb) {
+      fb.style.display = 'block';
+      fb.className = 'feedback-lote erro';
+      let detalhe = '<strong>Nenhuma carga ativa encontrada na fila.</strong><br>';
+      if (jaDespachados.length > 0) {
+        detalhe += `• ${jaDespachados.length} romaneio(s) já foram despachados anteriormente.<br>`;
+      }
+      if (naoEncontrados.length > 0) {
+        detalhe += `• ${naoEncontrados.length} romaneio(s) não constam no sistema.<br>`;
+      }
+      fb.innerHTML = detalhe;
+    }
+  }
+}
+
+async function processarDespacharLote() {
+  const txt = document.getElementById('textarea-colar-lote')?.value || '';
+  const romaneios = extrairRomaneiosDeTexto(txt);
+
+  if (!romaneios.length) {
+    toast('Cole ao menos um número de romaneio no campo.', 'erro');
+    return;
+  }
+
+  const encontrados = [];
+  const jaDespachados = [];
+  const naoEncontrados = [];
+
+  romaneios.forEach((num) => {
+    const numLower = num.toLowerCase();
+    const naFila = state.fila.find(
+      (f) => String(f.numeroRomaneio || '').trim().toLowerCase() === numLower
+    );
+    if (naFila) encontrados.push(naFila);
+    else {
+      const desp = state.despachados.find(
+        (c) => String(c.numeroRomaneio || '').trim().toLowerCase() === numLower
+      );
+      if (desp) jaDespachados.push(num);
+      else naoEncontrados.push(num);
+    }
+  });
+
+  if (!encontrados.length) {
+    const fb = document.getElementById('feedback-colar-lote');
+    if (fb) {
+      fb.style.display = 'block';
+      fb.className = 'feedback-lote erro';
+      fb.innerHTML = '<strong>Nenhuma carga ativa para despachar.</strong> Verifique os números informados.';
+    }
+    toast('Nenhuma carga ativa encontrada para despachar.', 'erro');
+    return;
+  }
+
+  const ids = encontrados.map((f) => Number(f.id));
+  const btn = document.getElementById('btn-despachar-lote');
+  const txtOriginal = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Despachando...';
+  }
+
+  try {
+    const res = await api('/api/cargas/status-em-massa', 'POST', {
+      ids,
+      status: 'Despachada',
+    });
+    fecharModalColarLote();
+    toast(`🚀 ${res.atualizados || ids.length} carga(s) despachada(s) com sucesso!`, 'ok');
+    await recarregarTudo();
+  } catch (e) {
+    toast(e.message || 'Erro ao despachar cargas em lote.', 'erro');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = txtOriginal;
+    }
+  }
+}
+
 // ------------------------------ Consulta rápida ------------------------------
 
 function ativarAba(nome) {
@@ -921,10 +1121,34 @@ document.getElementById('modal-confirmacao').addEventListener('click', (e) => {
   if (e.target === document.getElementById('modal-confirmacao')) fecharConfirmacao(false);
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && document.getElementById('modal-confirmacao').classList.contains('open')) {
-    fecharConfirmacao(false);
+  if (e.key === 'Escape') {
+    if (document.getElementById('modal-confirmacao').classList.contains('open')) {
+      fecharConfirmacao(false);
+    }
+    if (document.getElementById('modal-colar-lote')?.classList.contains('open')) {
+      fecharModalColarLote();
+    }
   }
 });
+
+// Eventos do Bipador de Romaneios
+document.getElementById('input-bipar-romaneio')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    processarBipadorRomaneio();
+  }
+});
+document.getElementById('btn-bipar-romaneio')?.addEventListener('click', processarBipadorRomaneio);
+
+// Eventos do Modal de Colar Lista em Lote
+document.getElementById('btn-abrir-colar-lote')?.addEventListener('click', abrirModalColarLote);
+document.getElementById('btn-fechar-colar-lote')?.addEventListener('click', fecharModalColarLote);
+document.getElementById('btn-cancelar-colar-lote')?.addEventListener('click', fecharModalColarLote);
+document.getElementById('modal-colar-lote')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal-colar-lote')) fecharModalColarLote();
+});
+document.getElementById('btn-marcar-lote')?.addEventListener('click', processarMarcarLote);
+document.getElementById('btn-despachar-lote')?.addEventListener('click', processarDespacharLote);
 
 document.getElementById('btn-imprimir-top').addEventListener('click', abrirRelatorio);
 document.getElementById('btn-imprimir-fila').addEventListener('click', abrirRelatorio);

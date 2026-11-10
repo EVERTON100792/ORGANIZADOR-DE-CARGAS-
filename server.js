@@ -44,11 +44,19 @@ async function sb(caminho, opcoes = {}) {
     'Content-Type': 'application/json',
     ...(opcoes.headers || {}),
   };
-  const res = await fetch(REST + caminho, {
-    method: opcoes.method || 'GET',
-    headers,
-    body: opcoes.body,
-  });
+  let res;
+  try {
+    res = await fetch(REST + caminho, {
+      method: opcoes.method || 'GET',
+      headers,
+      body: opcoes.body,
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (netErr) {
+    const erro = new Error('Falha de conexão com o banco de dados. Verifique sua conexão com a internet e tente novamente.');
+    erro.status = 503;
+    throw erro;
+  }
   const texto = await res.text();
   let dados = null;
   if (texto) {
@@ -237,14 +245,22 @@ app.post('/api/auth/login', rota(async (req, res) => {
     return res.status(400).json({ erro: 'Informe o e-mail e a senha.' });
   }
 
-  const response = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  });
+  let response;
+  try {
+    response = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(12000),
+    });
+  } catch (netErr) {
+    return res.status(503).json({
+      erro: 'Não foi possível conectar ao servidor de login no momento. Verifique sua conexão de internet e tente novamente.',
+    });
+  }
   const data = await response.json();
   if (!response.ok) {
     return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
