@@ -1747,6 +1747,13 @@ function fecharAppParaLogin() {
     authScreen.style.display = 'flex';
     alternarAbasAuth('login');
   }
+  // Limpa imediatamente os campos do formulário para não manter dados na tela
+  const emailInput = document.getElementById('login-email');
+  const senhaInput = document.getElementById('login-senha');
+  if (emailInput) emailInput.value = '';
+  if (senhaInput) senhaInput.value = '';
+  const nameEl = document.getElementById('user-name');
+  if (nameEl) nameEl.textContent = 'Usuário';
 }
 
 async function fazerLogin(e) {
@@ -1766,8 +1773,22 @@ async function fazerLogin(e) {
     const res = await api('/api/auth/login', 'POST', { email, password });
     state.token = res.token;
     state.usuario = res.user;
-    localStorage.setItem('cargas_auth_token', res.token);
-    localStorage.setItem('cargas_auth_user', JSON.stringify(res.user));
+
+    // Salva na sessão ativa do navegador (sessionStorage)
+    // Isso garante que ao fechar o navegador/aba a sessão expire e não fique salva para outra pessoa
+    sessionStorage.setItem('cargas_auth_token', res.token);
+    sessionStorage.setItem('cargas_auth_user', JSON.stringify(res.user));
+
+    // Remove qualquer dado legado de usuário no localStorage para não misturar máquinas
+    localStorage.removeItem('cargas_auth_token');
+    localStorage.removeItem('cargas_auth_user');
+
+    // Limpa os campos de senha e email para não ficarem guardados no DOM
+    const emailInput = document.getElementById('login-email');
+    const senhaInput = document.getElementById('login-senha');
+    if (emailInput) emailInput.value = '';
+    if (senhaInput) senhaInput.value = '';
+
     aplicarUsuarioNaTela(res.user);
     abrirApp();
     toast(`Bem-vindo, ${res.user.nome}!`, 'ok');
@@ -1806,7 +1827,7 @@ async function fazerCadastro(e) {
     await api('/api/auth/cadastro', 'POST', { nome, email, password });
     exibirAuthMsg('Conta criada com sucesso no Supabase! Você já pode entrar.', 'sucesso');
     document.getElementById('login-email').value = email;
-    document.getElementById('login-senha').value = password;
+    document.getElementById('login-senha').value = '';
     setTimeout(() => alternarAbasAuth('login'), 1200);
   } catch (err) {
     exibirAuthMsg(err.message, 'erro');
@@ -1823,6 +1844,18 @@ function fazerLogout(mensagem) {
   state.usuario = null;
   localStorage.removeItem('cargas_auth_token');
   localStorage.removeItem('cargas_auth_user');
+  sessionStorage.removeItem('cargas_auth_token');
+  sessionStorage.removeItem('cargas_auth_user');
+
+  // Limpa campos na tela de login
+  const emailInput = document.getElementById('login-email');
+  const senhaInput = document.getElementById('login-senha');
+  if (emailInput) emailInput.value = '';
+  if (senhaInput) senhaInput.value = '';
+
+  const nameEl = document.getElementById('user-name');
+  if (nameEl) nameEl.textContent = 'Usuário';
+
   fecharAppParaLogin();
   if (mensagem) {
     exibirAuthMsg(mensagem, 'erro');
@@ -1832,8 +1865,13 @@ function fazerLogout(mensagem) {
 }
 
 async function verificarSessaoInicial() {
-  const token = localStorage.getItem('cargas_auth_token');
-  const userJson = localStorage.getItem('cargas_auth_user');
+  // Limpa resíduos antigos de localStorage que pudessem estar salvos de outros usuários
+  localStorage.removeItem('cargas_auth_token');
+  localStorage.removeItem('cargas_auth_user');
+
+  // Verifica exclusivamente a sessão da aba atual (sessionStorage)
+  const token = sessionStorage.getItem('cargas_auth_token');
+  const userJson = sessionStorage.getItem('cargas_auth_user');
 
   if (!token || !userJson) {
     fecharAppParaLogin();
@@ -1858,6 +1896,19 @@ async function verificarSessaoInicial() {
 // ------------------------------ Init ------------------------------
 
 async function init() {
+  // Limpa campos de login ao carregar a página para nunca exibir dados de outros usuários
+  const emailInput = document.getElementById('login-email');
+  const senhaInput = document.getElementById('login-senha');
+  if (emailInput) emailInput.value = '';
+  if (senhaInput) senhaInput.value = '';
+
+  window.addEventListener('pageshow', () => {
+    if (!state.usuario) {
+      if (emailInput) emailInput.value = '';
+      if (senhaInput) senhaInput.value = '';
+    }
+  });
+
   document.getElementById('campo-status').innerHTML = STATUS_LIST.map((s) => `<option value="${s}">${s}</option>`).join('');
   document.getElementById('campo-tipoVeiculo').innerHTML =
     '<option value="">Selecione...</option>' +

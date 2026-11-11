@@ -31,12 +31,12 @@
       <div id="auth-msg" class="auth-msg" hidden></div>
 
       <!-- Formulário de Login -->
-      <form id="form-login" class="auth-form" autocomplete="on">
+      <form id="form-login" class="auth-form" autocomplete="off">
         <div class="form-group">
           <label for="login-email">E-mail corporativo</label>
           <div class="input-icon-wrap">
             <span class="input-icon">✉️</span>
-            <input id="login-email" type="email" placeholder="usuario@selmi.com.br" required autocomplete="email">
+            <input id="login-email" name="selmi_login_email" type="email" placeholder="usuario@selmi.com.br" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
           </div>
         </div>
 
@@ -44,7 +44,7 @@
           <label for="login-senha">Senha</label>
           <div class="input-icon-wrap">
             <span class="input-icon">🔒</span>
-            <input id="login-senha" type="password" placeholder="Sua senha de acesso" required autocomplete="current-password">
+            <input id="login-senha" name="selmi_login_pwd" type="password" placeholder="Sua senha de acesso" required autocomplete="new-password">
             <button type="button" class="btn-toggle-senha" id="btn-toggle-senha-login" title="Mostrar/ocultar senha">👁</button>
           </div>
         </div>
