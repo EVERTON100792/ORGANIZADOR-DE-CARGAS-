@@ -52,6 +52,12 @@ function formatarData(v) {
   return `${d}/${m}/${y}`;
 }
 
+function extrairMotorista(observacoes) {
+  if (!observacoes) return '';
+  const m = String(observacoes).match(/Motorista:\s*([^|;\n\r]+)/i);
+  return m ? m[1].trim() : '';
+}
+
 function formatarDataHora(v) {
   if (!v) return '–';
   const [data, hora] = String(v).split(' ');
@@ -777,7 +783,9 @@ function processarBipadorRomaneio() {
     (c) => String(c.numeroRomaneio || '').trim().toLowerCase() === numBusca
   );
   if (cargaDespachada) {
-    toast(`⚠️ Romaneio ${cargaDespachada.numeroRomaneio} já foi DESPACHADO anteriormente.`, 'erro');
+    const mot = extrairMotorista(cargaDespachada.observacoes);
+    const motStr = mot ? ` (Motorista: ${mot})` : '';
+    toast(`⚠️ Romaneio ${cargaDespachada.numeroRomaneio} já foi DESPACHADO anteriormente${motStr}.`, 'erro');
   } else {
     toast(`❌ Romaneio "${val}" não foi encontrado na fila ativa.`, 'erro');
   }
@@ -937,6 +945,370 @@ async function processarDespacharLote() {
   }
 }
 
+// ------------------------------ Leitor de PDF de Programação ------------------------------
+
+let pdfCargasAtuais = [];
+
+async function extrairCargasDePDF(file) {
+  if (!window.pdfjsLib) {
+    throw new Error('A biblioteca PDF.js ainda está carregando ou falhou. Verifique sua conexão com a internet.');
+  }
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const cargasExtraidas = [];
+  const romaneiosVistos = new Set();
+  const linhasFallback = [];
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+
+    // 1. Agrupar itens por linha vertical (eixo Y com tolerância de 8pt para acomodar observações de múltiplas linhas)
+    const gruposY = [];
+    content.items.forEach((item) => {
+      if (!item || !item.str) return;
+      const y = item.transform[5];
+      let grupo = gruposY.find((g) => Math.abs(g.y - y) <= 8);
+      if (!grupo) {
+        grupo = { y, itens: [] };
+        gruposY.push(grupo);
+      }
+      grupo.itens.push(item);
+    });
+
+    // Ordenar do topo para a base da página
+    gruposY.sort((a, b) => b.y - a.y);
+
+    for (const g of gruposY) {
+      // Ordenar da esquerda para a direita (eixo X)
+      g.itens.sort((a, b) => a.transform[4] - b.transform[4]);
+
+      // Guardar linha corrida para fallback genérico
+      const linhaCompleta = g.itens.map((it) => it.str).join(' ').trim();
+      if (linhaCompleta) linhasFallback.push(linhaCompleta);
+
+      // 2. Extração estruturada por colunas da Programação Turno C (coordenadas X)
+      const cols = {
+        num: '',
+        data: '',
+        veiculo: '',
+        romaneio: '',
+        tipo: '',
+        motorista: '',
+        peso: '',
+        obs: '',
+        horario: '',
+      };
+
+      g.itens.forEach((it) => {
+        const x = it.transform[4];
+        if (x < 50) cols.num += it.str;
+        else if (x < 140) cols.data += it.str;
+        else if (x < 250) cols.veiculo += it.str;
+        else if (x < 400) cols.romaneio += it.str;
+        else if (x < 540) cols.tipo += it.str;
+        else if (x < 720) cols.motorista += it.str;
+        else if (x < 800) cols.peso += it.str;
+        else if (x < 980) cols.obs += it.str;
+        else cols.horario += it.str;
+      });
+
+      const mRom = cols.romaneio.match(/\b\d{5,7}\b/);
+      if (mRom) {
+        const romaneio = mRom[0];
+        if (!romaneiosVistos.has(romaneio)) {
+          romaneiosVistos.add(romaneio);
+
+          let veiculoLimpo = cols.veiculo.trim().toUpperCase().replace(/\s+/g, '');
+          if (veiculoLimpo.includes('FIORINO')) veiculoLimpo = 'FIORINO';
+          else if (veiculoLimpo.includes('3/4')) veiculoLimpo = '3/4';
+          else if (veiculoLimpo.includes('VAN')) veiculoLimpo = 'VAN';
+          else if (veiculoLimpo.includes('TOCO')) veiculoLimpo = 'TOCO';
+
+          cargasExtraidas.push({
+            romaneio,
+            veiculo: veiculoLimpo || cols.veiculo.trim(),
+            motorista: cols.motorista.trim(),
+            peso: cols.peso.trim(),
+            data: cols.data.trim(),
+            observacao: cols.obs.trim(),
+            horario: cols.horario.trim(),
+          });
+        }
+      }
+    }
+  }
+
+  // 3. Fallback genérico caso a tabela estruturada não identifique os romaneios
+  if (cargasExtraidas.length === 0) {
+    return interpretarLinhasPDFProgramacao(linhasFallback);
+  }
+
+  return cargasExtraidas;
+}
+
+function interpretarLinhasPDFProgramacao(linhas) {
+  const regex = /(?:(\d{1,3})\s+)?(?:(\d{2}\/\d{2}\/\d{4})\s+)?(FIORINO|VAN|VAN-SP|3\/4|3\/4-SP|TOCO|TOCO-SP)\s+(\d{5,7})\s+(?:BATIDA|PALETIZADA|FRACIONADA|DIRETA|[A-Z]{4,12})\s+([A-Z\s]{2,35}?)\s+(\d{1,3}(?:\.\d{3})*(?:,\d+)?|\d+)/i;
+
+  const cargasExtraidas = [];
+  const romaneiosVistos = new Set();
+
+  linhas.forEach((linha) => {
+    const l = linha.trim();
+    if (!l) return;
+
+    const m = l.match(regex);
+    if (m) {
+      const romaneio = m[4];
+      if (!romaneiosVistos.has(romaneio)) {
+        romaneiosVistos.add(romaneio);
+        cargasExtraidas.push({
+          romaneio,
+          veiculo: m[3].toUpperCase(),
+          motorista: m[5].trim(),
+          peso: m[6] || '',
+          data: m[2] || '',
+          observacao: '',
+          horario: '',
+        });
+      }
+    } else {
+      const mRom = l.match(/\b(\d{5,7})\b/);
+      if (
+        mRom &&
+        !l.toUpperCase().includes('TOTAL') &&
+        !l.toUpperCase().includes('PROGRAMAÇÃO') &&
+        !l.toUpperCase().includes('TRIZY')
+      ) {
+        const romaneio = mRom[1];
+        if (!romaneiosVistos.has(romaneio)) {
+          romaneiosVistos.add(romaneio);
+          const veicMatch = l.match(/\b(FIORINO|VAN|VAN-SP|3\/4|3\/4-SP|TOCO|TOCO-SP)\b/i);
+          cargasExtraidas.push({
+            romaneio,
+            veiculo: veicMatch ? veicMatch[1].toUpperCase() : '',
+            motorista: '',
+            peso: '',
+            data: '',
+            observacao: '',
+            horario: '',
+          });
+        }
+      }
+    }
+  });
+
+  return cargasExtraidas;
+}
+
+function fecharModalPreviewPDF() {
+  document.getElementById('modal-preview-pdf')?.classList.remove('open');
+  const fileInput = document.getElementById('input-pdf-upload');
+  if (fileInput) fileInput.value = '';
+}
+
+async function processarArquivoPDF(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+    toast('Por favor, selecione um arquivo no formato PDF.', 'erro');
+    return;
+  }
+
+  toast('Lendo arquivo PDF e identificando romaneios...', 'ok');
+
+  try {
+    const extraidos = await extrairCargasDePDF(file);
+
+    if (!extraidos.length) {
+      toast('Não foi possível identificar romaneios na tabela deste PDF. Verifique se o arquivo possui texto selecionável.', 'erro');
+      return;
+    }
+
+    pdfCargasAtuais = extraidos.map((item) => {
+      const numLower = item.romaneio.toLowerCase();
+      const naFila = state.fila.find(
+        (f) => String(f.numeroRomaneio || '').trim().toLowerCase() === numLower
+      );
+      if (naFila) {
+        return {
+          ...item,
+          status: 'PRONTA',
+          cargaId: naFila.id,
+          posicao: naFila.posicao,
+          veiculoOriginal: naFila.tipoVeiculo,
+          selecionado: true,
+        };
+      }
+      const despachada = state.despachados.find(
+        (c) => String(c.numeroRomaneio || '').trim().toLowerCase() === numLower
+      );
+      if (despachada) {
+        return {
+          ...item,
+          status: 'DESPACHADA',
+          cargaId: despachada.id,
+          selecionado: false,
+        };
+      }
+      return {
+        ...item,
+        status: 'NAO_CADASTRADA',
+        cargaId: null,
+        selecionado: false,
+      };
+    });
+
+    renderModalPreviewPDF(file.name);
+  } catch (err) {
+    toast(err.message || 'Erro ao processar o arquivo PDF.', 'erro');
+  }
+}
+
+function renderModalPreviewPDF(nomeArquivo) {
+  const modal = document.getElementById('modal-preview-pdf');
+  const nomeEl = document.getElementById('pdf-nome-arquivo');
+  const subinfoEl = document.getElementById('pdf-subtitulo-info');
+  const badgeProntos = document.getElementById('badge-pdf-prontos');
+  const badgeDesp = document.getElementById('badge-pdf-despachados');
+  const badgeNao = document.getElementById('badge-pdf-nao-encontrados');
+  const tbody = document.getElementById('pdf-tbody-cargas');
+
+  if (nomeEl) nomeEl.textContent = nomeArquivo || 'Programacao.pdf';
+
+  const nProntas = pdfCargasAtuais.filter((c) => c.status === 'PRONTA').length;
+  const nDesp = pdfCargasAtuais.filter((c) => c.status === 'DESPACHADA').length;
+  const nNao = pdfCargasAtuais.filter((c) => c.status === 'NAO_CADASTRADA').length;
+
+  if (subinfoEl) {
+    subinfoEl.textContent = `${pdfCargasAtuais.length} cargas identificadas no documento`;
+  }
+  if (badgeProntos) badgeProntos.textContent = `${nProntas} prontas para despachar`;
+  if (badgeDesp) badgeDesp.textContent = `${nDesp} já despachadas`;
+  if (badgeNao) badgeNao.textContent = `${nNao} não cadastradas`;
+
+  if (tbody) {
+    tbody.innerHTML = '';
+    pdfCargasAtuais.forEach((c) => {
+      const tr = document.createElement('tr');
+      if (c.status === 'NAO_CADASTRADA') tr.className = 'row-nao-cadastrada';
+
+      const tdCheck = document.createElement('td');
+      tdCheck.className = 'col-check';
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.checked = Boolean(c.selecionado && c.status === 'PRONTA');
+      check.disabled = c.status !== 'PRONTA';
+      check.addEventListener('change', () => {
+        c.selecionado = check.checked;
+        atualizarBotaoDespachoPDF();
+      });
+      tdCheck.appendChild(check);
+
+      const tdRom = document.createElement('td');
+      tdRom.innerHTML = `<strong>${c.romaneio}</strong>`;
+
+      const tdVeic = document.createElement('td');
+      tdVeic.textContent = c.veiculo || '–';
+
+      const tdMot = document.createElement('td');
+      tdMot.textContent = c.motorista ? c.motorista : '–';
+
+      const tdStatus = document.createElement('td');
+      if (c.status === 'PRONTA') {
+        tdStatus.innerHTML = `<span class="status-tag-pdf status-tag-pronto">🟢 Ativa na Fila (${c.posicao}º)</span>`;
+      } else if (c.status === 'DESPACHADA') {
+        tdStatus.innerHTML = `<span class="status-tag-pdf status-tag-despachada">⚪ Já Despachada</span>`;
+      } else {
+        tdStatus.innerHTML = `<span class="status-tag-pdf status-tag-inexistente">🔴 Não Cadastrada</span>`;
+      }
+
+      tr.append(tdCheck, tdRom, tdVeic, tdMot, tdStatus);
+      tbody.appendChild(tr);
+    });
+  }
+
+  atualizarBotaoDespachoPDF();
+
+  if (modal) modal.classList.add('open');
+}
+
+function atualizarBotaoDespachoPDF() {
+  const btnDespachar = document.getElementById('btn-despachar-tudo-pdf');
+  const checkTodos = document.getElementById('check-todos-pdf');
+  const prontas = pdfCargasAtuais.filter((c) => c.status === 'PRONTA');
+  const selecionadas = prontas.filter((c) => c.selecionado);
+
+  if (btnDespachar) {
+    btnDespachar.disabled = selecionadas.length === 0;
+    btnDespachar.textContent = `🚀 Despachar Cargas Prontas (${selecionadas.length})`;
+  }
+  if (checkTodos) {
+    checkTodos.disabled = prontas.length === 0;
+    checkTodos.checked = prontas.length > 0 && selecionadas.length === prontas.length;
+    checkTodos.indeterminate = selecionadas.length > 0 && selecionadas.length < prontas.length;
+  }
+}
+
+function confirmarSelecaoFilaPDF() {
+  const selecionadas = pdfCargasAtuais.filter((c) => c.status === 'PRONTA' && c.selecionado);
+  if (!selecionadas.length) {
+    toast('Selecione ao menos uma carga ativa na tabela.', 'erro');
+    return;
+  }
+  selecionadas.forEach((c) => state.selecionadas.add(String(c.cargaId)));
+  fecharModalPreviewPDF();
+  renderFila();
+  toast(`✓ ${selecionadas.length} carga(s) do PDF selecionada(s) na fila de prioridade!`, 'ok');
+}
+
+async function confirmarDespachoPDF() {
+  const selecionadas = pdfCargasAtuais.filter((c) => c.status === 'PRONTA' && c.selecionado);
+  if (!selecionadas.length) {
+    toast('Nenhuma carga ativa selecionada para despacho.', 'erro');
+    return;
+  }
+
+  const salvarMot = document.getElementById('check-salvar-motorista')?.checked;
+  const ids = selecionadas.map((c) => Number(c.cargaId));
+  const motoristasMap = {};
+
+  if (salvarMot) {
+    selecionadas.forEach((c) => {
+      if (c.motorista) {
+        motoristasMap[c.cargaId] = c.motorista;
+      }
+    });
+  }
+
+  const btn = document.getElementById('btn-despachar-tudo-pdf');
+  const txtOriginal = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Despachando...';
+  }
+
+  try {
+    const res = await api('/api/cargas/status-em-massa', 'POST', {
+      ids,
+      status: 'Despachada',
+      motoristas: motoristasMap,
+    });
+    fecharModalPreviewPDF();
+    toast(`🚀 ${res.atualizados || ids.length} carga(s) despachada(s) com sucesso com seus motoristas vinculados!`, 'ok');
+    await recarregarTudo();
+  } catch (err) {
+    toast(err.message || 'Erro ao despachar cargas.', 'erro');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = txtOriginal;
+    }
+  }
+}
+
 // ------------------------------ Consulta rápida ------------------------------
 
 function ativarAba(nome) {
@@ -1052,18 +1424,22 @@ async function consultarRomaneio() {
     const despachada = String(carga.status) === 'Despachada';
     box.className = 'consulta-resultado ' + (despachada ? 'despachada' : 'cadastrada');
     const dataDespacho = carga.dataDespacho ? ` em ${formatarData(carga.dataDespacho)}` : '';
-    const veiculo = carga.tipoVeiculo ? ` (Veículo: ${carga.tipoVeiculo})` : '';
+    const mot = extrairMotorista(carga.observacoes);
+    const detalhes = [];
+    if (carga.tipoVeiculo) detalhes.push(`Veículo: ${carga.tipoVeiculo}`);
+    if (mot) detalhes.push(`Motorista: ${mot}`);
+    const detalhesStr = detalhes.length ? ` (${detalhes.join(' | ')})` : '';
 
     if (despachada) {
-      box.textContent = `Romaneio ${carga.numeroRomaneio} já foi DESPACHADO${dataDespacho}${veiculo}. Não é necessário cadastrar novamente.`;
+      box.textContent = `Romaneio ${carga.numeroRomaneio} já foi DESPACHADO${dataDespacho}${detalhesStr}. Não é necessário cadastrar novamente.`;
       return;
     }
 
-    box.textContent = `Romaneio ${carga.numeroRomaneio} está cadastrado com status "${carga.status}"${veiculo}. Não é necessário cadastrar novamente.`;
+    box.textContent = `Romaneio ${carga.numeroRomaneio} está cadastrado com status "${carga.status}"${detalhesStr}. Não é necessário cadastrar novamente.`;
 
     const posicao = await destacarCargaNaFila(carga);
     if (posicao) {
-      box.textContent = `Romaneio ${carga.numeroRomaneio} está na ${posicao}ª posição da fila de prioridade${veiculo}. Destaque aplicado na lista.`;
+      box.textContent = `Romaneio ${carga.numeroRomaneio} está na ${posicao}ª posição da fila de prioridade${detalhesStr}. Destaque aplicado na lista.`;
     }
   } catch (e) {
     box.className = 'consulta-resultado erro';
@@ -1128,6 +1504,9 @@ document.addEventListener('keydown', (e) => {
     if (document.getElementById('modal-colar-lote')?.classList.contains('open')) {
       fecharModalColarLote();
     }
+    if (document.getElementById('modal-preview-pdf')?.classList.contains('open')) {
+      fecharModalPreviewPDF();
+    }
   }
 });
 
@@ -1149,6 +1528,48 @@ document.getElementById('modal-colar-lote')?.addEventListener('click', (e) => {
 });
 document.getElementById('btn-marcar-lote')?.addEventListener('click', processarMarcarLote);
 document.getElementById('btn-despachar-lote')?.addEventListener('click', processarDespacharLote);
+
+// Eventos de Importação de PDF de Programação
+document.getElementById('btn-abrir-upload-pdf')?.addEventListener('click', () => {
+  document.getElementById('input-pdf-upload')?.click();
+});
+
+document.getElementById('input-pdf-upload')?.addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (file) processarArquivoPDF(file);
+});
+
+document.getElementById('btn-fechar-preview-pdf')?.addEventListener('click', fecharModalPreviewPDF);
+document.getElementById('btn-cancelar-preview-pdf')?.addEventListener('click', fecharModalPreviewPDF);
+document.getElementById('modal-preview-pdf')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal-preview-pdf')) fecharModalPreviewPDF();
+});
+
+document.getElementById('check-todos-pdf')?.addEventListener('change', (e) => {
+  const marcado = e.target.checked;
+  pdfCargasAtuais.forEach((c) => {
+    if (c.status === 'PRONTA') c.selecionado = marcado;
+  });
+  document.querySelectorAll('#pdf-tbody-cargas input[type="checkbox"]').forEach((cb) => {
+    if (!cb.disabled) cb.checked = marcado;
+  });
+  atualizarBotaoDespachoPDF();
+});
+
+document.getElementById('btn-selecionar-fila-pdf')?.addEventListener('click', confirmarSelecaoFilaPDF);
+document.getElementById('btn-despachar-tudo-pdf')?.addEventListener('click', confirmarDespachoPDF);
+
+// Suporte para arrastar e soltar (drag & drop) o PDF em qualquer lugar
+window.addEventListener('dragover', (e) => {
+  e.preventDefault();
+});
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (file && (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf')) {
+    processarArquivoPDF(file);
+  }
+});
 
 document.getElementById('btn-imprimir-top').addEventListener('click', abrirRelatorio);
 document.getElementById('btn-imprimir-fila').addEventListener('click', abrirRelatorio);

@@ -202,8 +202,12 @@
             </div>
             <div class="lote-group">
               <button id="btn-abrir-colar-lote" class="btn btn-ghost btn-colar-lote" type="button" title="Colar vários romaneios de uma vez só para marcar ou despachar">
-                📋 Colar Lista de Romaneios
+                📋 Colar Lista
               </button>
+              <button id="btn-abrir-upload-pdf" class="btn btn-primary btn-upload-pdf" type="button" title="Importar PDF de programação com romaneios e motoristas contratados">
+                📄 Importar PDF de Programação
+              </button>
+              <input type="file" id="input-pdf-upload" accept=".pdf,application/pdf" style="display: none;">
             </div>
           </div>
           <div class="seq-bar">
@@ -420,6 +424,57 @@
     </div>
   </div>
 
+  <!-- Modal Prévia de Importação de PDF de Programação -->
+  <div id="modal-preview-pdf" class="modal-overlay" aria-hidden="true">
+    <div class="modal modal-pdf-preview" role="dialog" aria-modal="true" aria-labelledby="pdf-preview-titulo">
+      <div class="modal-header">
+        <h3 id="pdf-preview-titulo">📄 Cargas do PDF de Programação</h3>
+        <button class="modal-close" id="btn-fechar-preview-pdf" title="Fechar">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="pdf-summary-bar">
+          <div class="pdf-file-info">
+            <span class="pdf-file-icon">📑</span>
+            <div>
+              <strong id="pdf-nome-arquivo">Programacao.pdf</strong>
+              <div id="pdf-subtitulo-info" class="pdf-subinfo">0 cargas identificadas no documento</div>
+            </div>
+          </div>
+          <div class="pdf-badges-resumo">
+            <span class="badge-pdf badge-prontos" id="badge-pdf-prontos">0 prontas para despachar</span>
+            <span class="badge-pdf badge-despachados" id="badge-pdf-despachados">0 já despachadas</span>
+            <span class="badge-pdf badge-nao-encontrados" id="badge-pdf-nao-encontrados">0 não cadastradas</span>
+          </div>
+        </div>
+
+        <div class="pdf-table-wrapper">
+          <table class="table pdf-table">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="check-todos-pdf" checked title="Marcar/desmarcar prontas"></th>
+                <th>Romaneio</th>
+                <th>Veículo</th>
+                <th>Motorista Contratado</th>
+                <th>Status no Sistema</th>
+              </tr>
+            </thead>
+            <tbody id="pdf-tbody-cargas"></tbody>
+          </table>
+        </div>
+
+        <label class="pdf-check-motorista">
+          <input type="checkbox" id="check-salvar-motorista" checked>
+          <span>Gravar o <strong>Nome do Motorista</strong> nas observações e histórico de cada carga despachada</span>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-cancelar-preview-pdf" type="button">Cancelar</button>
+        <button class="btn btn-ghost" id="btn-selecionar-fila-pdf" type="button">✓ Apenas Selecionar na Fila</button>
+        <button class="btn btn-success" id="btn-despachar-tudo-pdf" type="button">🚀 Despachar Cargas Prontas (0)</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <div id="print-report" class="print-report">
@@ -449,6 +504,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/report.js"></script>
 </body>

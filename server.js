@@ -571,50 +571,86 @@ app.post('/api/cargas/status-em-massa', rota(async (req, res) => {
   const status = normalizarStatus(req.body.status);
   if (!status.valido) return res.status(400).json({ erro: status.erro });
 
+  const motoristasMap = (req.body.motoristas && typeof req.body.motoristas === 'object') ? req.body.motoristas : null;
+
   const chunkSize = 100;
   let atualizadosTotal = 0;
 
   for (let i = 0; i < ids.length; i += chunkSize) {
     const chunkIds = ids.slice(i, i + chunkSize);
-    const lista = await sb('/cargas?select=id,status,numeroRomaneio&id=in.(' + chunkIds.join(',') + ')');
+    const lista = await sb('/cargas?select=id,status,numeroRomaneio,observacoes&id=in.(' + chunkIds.join(',') + ')');
     if (!lista || lista.length === 0) continue;
 
-    const idsParaAtualizar = lista
-      .filter((c) => String(c.status) !== status.valor)
-      .map((c) => c.id);
+    const agoraStr = agora();
+    const dataDesp = status.valor === 'Despachada' ? hoje() : null;
 
-    if (idsParaAtualizar.length > 0) {
-      const agoraStr = agora();
-      const atualizacoes = {
-        status: status.valor,
-        atualizadoEm: agoraStr,
-      };
-      if (status.valor === 'Despachada') {
-        atualizacoes.dataDespacho = hoje();
-      } else {
-        atualizacoes.dataDespacho = null;
-      }
-
-      await sb('/cargas?id=in.(' + idsParaAtualizar.join(',') + ')', {
-        method: 'PATCH',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify(atualizacoes),
-      });
-
+    if (motoristasMap && Object.keys(motoristasMap).length > 0) {
       for (const carga of lista) {
-        if (String(carga.status) !== status.valor) {
-          await registrarHistorico(
-            carga.id,
-            'status',
-            'status',
-            carga.status,
-            status.valor,
-            status.valor === 'Despachada' ? 'Carga despachada em massa' : 'Status alterado em massa'
-          );
-        }
-      }
+        const mot = String(motoristasMap[carga.id] || motoristasMap[carga.numeroRomaneio] || '').trim();
+        const atualizacoes = {
+          status: status.valor,
+          atualizadoEm: agoraStr,
+          dataDespacho: dataDesp,
+        };
 
-      atualizadosTotal += idsParaAtualizar.length;
+        if (mot) {
+          const obsAntiga = (carga.observacoes || '').trim();
+          const tagMotorista = `Motorista: ${mot}`;
+          if (!obsAntiga.includes(mot)) {
+            atualizacoes.observacoes = obsAntiga ? `${obsAntiga} | ${tagMotorista}` : tagMotorista;
+          }
+        }
+
+        await sb('/cargas?id=eq.' + carga.id, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify(atualizacoes),
+        });
+
+        await registrarHistorico(
+          carga.id,
+          'status',
+          'status',
+          carga.status,
+          status.valor,
+          mot ? `Despachada para motorista: ${mot}` : (status.valor === 'Despachada' ? 'Carga despachada em massa' : 'Status alterado em massa')
+        );
+
+        atualizadosTotal++;
+      }
+    } else {
+      const idsParaAtualizar = lista
+        .filter((c) => String(c.status) !== status.valor)
+        .map((c) => c.id);
+
+      if (idsParaAtualizar.length > 0) {
+        const atualizacoes = {
+          status: status.valor,
+          atualizadoEm: agoraStr,
+          dataDespacho: dataDesp,
+        };
+
+        await sb('/cargas?id=in.(' + idsParaAtualizar.join(',') + ')', {
+          method: 'PATCH',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify(atualizacoes),
+        });
+
+        for (const carga of lista) {
+          if (String(carga.status) !== status.valor) {
+            await registrarHistorico(
+              carga.id,
+              'status',
+              'status',
+              carga.status,
+              status.valor,
+              status.valor === 'Despachada' ? 'Carga despachada em massa' : 'Status alterado em massa'
+            );
+          }
+        }
+
+        atualizadosTotal += idsParaAtualizar.length;
+      }
     }
   }
 
